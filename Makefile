@@ -31,7 +31,7 @@ clean:
 
 ## Lint using flake8
 lint:
-	flake8 drought
+	flake8 src
 
 ## Set up python interpreter environment
 create_environment:

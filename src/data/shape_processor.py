@@ -5,9 +5,9 @@ from shapely import unary_union
 
 
 def get_union(region_gpd: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
-    ''' 
-    If Geo DataFrame contains many rows with many geometries, create a 
-    union of all of them, outputing another df with a single row and single 
+    '''
+    If Geo DataFrame contains many rows with many geometries, create a
+    union of all of them, outputing another df with a single row and single
     geometry.
     '''
     series = \
