@@ -9,9 +9,10 @@ logger = get_logger(__file__)
 
 def get_gedi_shots(
     geometry: gpd.GeoDataFrame,
-    start_year: int,
-    end_year: int,
+    start_year: int = 2019,
+    end_year: int = 2023,
     crs: str = constants.WGS84,
+    save_file_path: str = None
 ):
     database = GediDatabase()
 
@@ -50,8 +51,15 @@ def get_gedi_shots(
         & (gedi_shots.l4_quality_flag == 1)
         & (gedi_shots.degrade_flag == 0)
     ]
+    # Drop the columns we filtered on already.
+    gedi_shots = gedi_shots.drop(
+        columns=['l2_quality_flag', 'l4_quality_flag', 'degrade_flag'])
+
     logger.info(f'Number of GEDI shots found: {gedi_shots.shape[0]}')
-    gedi_shots.to_csv('/maps/fire-regen/data/sierras_gedi_shots.csv')
+
+    if save_file_path is not None:
+        gedi_shots.to_csv(save_file_path)
+
     return gedi_shots
 
 
