@@ -49,6 +49,10 @@ def get_burn_severity_data() -> ee.ImageCollection:
     return _add_year_as_band(conus)
 
 
+def get_burn_severity_data_for_year(year: int) -> ee.Image:
+    return get_burn_severity_data().filterDate(str(year), str(year + 1)).first()
+
+
 def get_burn_count_data(ic_severity: ee.ImageCollection) -> ee.Image:
     zero_burn = ee.Image.constant(0).rename('burn_count')
 
