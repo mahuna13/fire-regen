@@ -71,12 +71,12 @@ class GediDatabase(object):
             )
             self.inspector = inspect(self.engine)
 
-        self.allowed_cols = {}
-        for table_name in self.inspector.get_table_names():
-            allowed_cols = {
-                col["name"] for col in self.inspector.get_columns(table_name)
-            }
-            self.allowed_cols[table_name] = allowed_cols
+            self.allowed_cols = {}
+            for table_name in self.inspector.get_table_names():
+                allowed_cols = {
+                    col["name"] for col in self.inspector.get_columns(table_name)
+                }
+                self.allowed_cols[table_name] = allowed_cols
 
     def query(
         self,
