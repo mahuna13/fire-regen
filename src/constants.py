@@ -64,7 +64,7 @@ DEFAULT_FORMATTER = logging.Formatter(
     )
 )
 DEFAULT_LOG_FILE = LOG_PATH / "default_log.log"
-DEFAULT_LOG_LEVEL = logging.INFO  # verbose logging per default
+DEFAULT_LOG_LEVEL = logging.DEBUG  # verbose logging per default
 
 # ---------------- PROJECT CONSTANTS ----------------
 # Coordinate reference systems (crs)
