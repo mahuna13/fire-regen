@@ -37,19 +37,19 @@ def filter_shots(gedi_gdf: gpd.GeoDataFrame):
         {gedi_gdf.shape[0]}')
 
     # Divide GEDI shots into burned and unburned.
-    gedi_burned = gedi_gdf[gedi_gdf.burn_counts_sample > 0]
+    gedi_burned = gedi_gdf[gedi_gdf.burn_counts_median > 0]
     logger.debug(f'Number of GEDI shots that burned at least once: \
                  {gedi_burned.shape[0]}')
 
     gedi_unburned = gedi_gdf[
-        (gedi_gdf.burn_counts_sample == 0) &
+        (gedi_gdf.burn_counts_median == 0) &
         (gedi_gdf.burn_severity_median == 0)]
     logger.debug(f'Number of GEDI shots that never burned since 1984: \
         {gedi_unburned.shape[0]}')
 
     # For the burned shots, calculate time in years since they burned.
     gedi_burned['time_since_burn'] = gedi_burned.gedi_year - \
-        gedi_burned.burn_year_sample
+        gedi_burned.burn_year_median
 
     # For unburned, just set the time to -1.
     gedi_unburned['time_since_burn'] = -1
