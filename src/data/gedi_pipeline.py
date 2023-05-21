@@ -76,7 +76,7 @@ def filter_shots_for_regrowth_analysis(gedi_gdf: gpd.GeoDataFrame):
 
     gedi_gdf_perfect = gedi_gdf[gedi_gdf.burn_severity_std == 0]
     logger.debug(f'Number of GEDI shots that have a perfect match with burn \
-                   raster (all 3x3 pixels have the same severity): \
+                   raster (all 2x2 pixels have the same severity): \
                    {gedi_gdf_perfect.shape[0]}')
 
     return gedi_gdf_perfect
@@ -94,3 +94,26 @@ def add_time_since_burn_categories(df: gpd.GeoDataFrame):
         labels=['unburned', 'burn_10', 'burn_20', "burn_30", "burn_40"]
     )
     return df.join(c.unstack().add_suffix('_cat'))
+
+
+def process_gedi_shots_for_regrowth_analysis(file_path: str, trees: bool):
+    gedi_gpd = get_gedi_as_gdp(file_path)
+    logger.debug(
+        f'Total number of GEDI shots available for the region: \
+        {gedi_gpd.shape[0]}')
+
+    gedi_gpd = process_shots(gedi_gpd)
+
+    gedi_burned, gedi_unburned = filter_shots(gedi_gpd)
+    gedi_burned = filter_shots_for_regrowth_analysis(gedi_burned)
+
+    # Add time since burn categories
+    gedi_burned = add_time_since_burn_categories(gedi_burned)
+    gedi_unburned = add_time_since_burn_categories(gedi_unburned)
+
+    if trees:
+        gedi_burned_trees = filter_for_trees(gedi_burned)
+        gedi_unburned_trees = filter_for_trees(gedi_unburned)
+        return gedi_burned_trees, gedi_unburned_trees
+    else:
+        return gedi_burned, gedi_unburned
