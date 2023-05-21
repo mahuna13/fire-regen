@@ -2,15 +2,16 @@ import rasterio as rio
 from rasterio.warp import calculate_default_transform, reproject, Resampling
 import pandas as pd
 import numpy as np
-import xarray
 import rioxarray as riox
 
 
 BURN_DATA_RASTER = '/maps/fire-regen/data/rasters/burn_data_sierras.tif'
 LAND_COVER_RASTER = '/maps/fire-regen/data/rasters/land_cover_sierras.tif'
+TERRAIN_RASTER = '/maps/fire-regen/data/rasters/terrain_sierras_30.tif'
 
 BURN_RASTER_BANDS = {0: 'burn_severity', 1: 'burn_year', 2: 'burn_counts'}
 LAND_COVER_BANDS = {0: 'land_cover'}
+TERRAIN_BANDS = {0: 'elevation', 1: 'slope', 2: 'aspect', 3: 'soil'}
 
 
 class Raster:
