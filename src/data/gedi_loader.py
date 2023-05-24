@@ -7,6 +7,63 @@ from src.utils.logging_util import get_logger
 logger = get_logger(__file__)
 
 
+def get_l2b_gedi_shots(
+    geometry: gpd.GeoDataFrame,
+    start_year: int = 2019,
+    end_year: int = 2023,
+    crs: str = constants.WGS84,
+    save_file_path: str = None
+):
+    database = GediDatabase()
+
+    # Load GEDI data within tile
+    logger.info(
+        f'Loading Level 2B GEDI shots for period {start_year}-{end_year} in this geometry')
+    gedi_shots = database.query(
+        table_name="level_2b",
+        columns=[
+            "shot_number",
+            "absolute_time",
+            "lon_lowestmode",
+            "lat_lowestmode",
+            "fhd_normal",
+            "pai",
+            "pai_z",
+            "pavd_z",
+            "rh100",
+            "cover",
+            "cover_z",
+            "l2b_quality_flag",
+            "degrade_flag",
+            "beam_type",
+            "sensitivity",
+            "gridded_pft_class"
+        ],
+        geometry=geometry,
+        crs=crs,
+        start_time=f"{start_year}-01-01",
+        end_time=f"{end_year}-01-01",
+    )
+    logger.debug(
+        f'Found {len(gedi_shots)} shots in {start_year}-{end_year} in the specified geometry')
+
+    # Preliminary filtering to reduce computation size
+    gedi_shots = gedi_shots[
+        (gedi_shots.l2b_quality_flag == 1)
+        & (gedi_shots.degrade_flag == 0)
+    ]
+    # Drop the columns we filtered on already.
+    gedi_shots = gedi_shots.drop(
+        columns=['l2b_quality_flag', 'degrade_flag'])
+
+    logger.info(f'Number of GEDI shots found: {gedi_shots.shape[0]}')
+
+    if save_file_path is not None:
+        gedi_shots.to_csv(save_file_path)
+
+    return gedi_shots
+
+
 def get_gedi_shots(
     geometry: gpd.GeoDataFrame,
     start_year: int = 2019,
@@ -66,4 +123,6 @@ def get_gedi_shots(
 if __name__ == "__main__":
     # shape_gpd = gpd.read_file("data/shapefiles/seki_convex_hull.shp")
     shape_gpd = gpd.read_file("data/shapefiles/sierras_convex_hull.shp")
-    get_gedi_shots(shape_gpd.geometry, 2019, 2023)
+    # get_gedi_shots(shape_gpd.geometry, 2019, 2023)
+    get_l2b_gedi_shots(shape_gpd.geometry, 2019, 2023,
+                       save_file_path='/maps/fire-regen/data/sierras_gedi_l2b_shots.csv')
