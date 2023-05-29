@@ -130,3 +130,17 @@ def process_gedi_shots_for_regrowth_analysis(file_path: str, trees: bool):
         return gedi_burned_trees, gedi_unburned_trees
     else:
         return gedi_burned, gedi_unburned
+
+
+def print_burn_stats(df):
+    # Gedi statistics
+    unburned_ratio = (df[df.burn_counts_median == 0].shape[0])/df.shape[0]
+    high_burn_ratio = (df[(df.burn_severity_median == 4)].shape[0])/df.shape[0]
+    medium_burn_ratio = (
+        df[(df.burn_severity_median == 3)].shape[0])/df.shape[0]
+    low_burn_ratio = (df[(df.burn_severity_median == 2)].shape[0])/df.shape[0]
+
+    print(f'Unburned ratio: {unburned_ratio*100}%')
+    print(f'High-burned ratio: {high_burn_ratio*100}%')
+    print(f'Medium-burned ratio: {medium_burn_ratio*100}%')
+    print(f'Low-burned ratio: {low_burn_ratio*100}%')
