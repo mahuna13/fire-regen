@@ -7,11 +7,22 @@ import rioxarray as riox
 
 BURN_DATA_RASTER = '/maps/fire-regen/data/rasters/burn_data_sierras.tif'
 LAND_COVER_RASTER = '/maps/fire-regen/data/rasters/land_cover_sierras.tif'
-TERRAIN_RASTER = '/maps/fire-regen/data/rasters/terrain_sierras_30.tif'
+TERRAIN_RASTER = '/maps/fire-regen/data/rasters/TERRAIN/terrain_stack.tif'
+
+
+def LANDSAT_RASTER(year):
+    return f"/maps/fire-regen/data/rasters/LANDSAT/{year}/out/landsat_{year}_stack.tif"
+
+
+def DYNAMIC_WORLD_RASTER(year):
+    return f"/maps/fire-regen/data/rasters/DYNAMIC_WORLD/dynamic_world_{year}.tif"
+
 
 BURN_RASTER_BANDS = {0: 'burn_severity', 1: 'burn_year', 2: 'burn_counts'}
 LAND_COVER_BANDS = {0: 'land_cover'}
 TERRAIN_BANDS = {0: 'elevation', 1: 'slope', 2: 'aspect', 3: 'soil'}
+LANDSAT_BANDS = {0: 'nbr', 1: 'ndvi', 2: 'SR_B1', 3: 'SR_B2',
+                 4: 'SR_B3', 5: 'SR_B4', 6: 'SR_B5', 7: 'SR_B6', 8: 'SR_B7'}
 
 
 class Raster:
@@ -79,13 +90,23 @@ class RasterSampler:
             df[f'{band_name}_median'] = np.median(band_values, axis=1)
         return df
 
+    def sample(self, df: pd.DataFrame, x_coord: str, y_coord: str):
+        xs = get_idx(self.raster.x.data, df[x_coord].values)
+        ys = get_idx(self.raster.y.data, df[y_coord].values)
+
+        # Calculate stats for each band. Attach to df.
+        for band_idx, band_name in self.bands.items():
+            band_values = self.raster.data[band_idx, ys, xs]
+            df[f'{band_name}'] = list(band_values)
+        return df
+
 
 class RasterSamplerOld:
     def __init__(self, raster: Raster):
         self.raster = raster
 
-    def sample(self, df_input: pd.DataFrame, x_coord: str, y_coord: str,
-               kernel_size: int, bands: list[str]) -> pd.DataFrame:
+    def sample_3x3(self, df_input: pd.DataFrame, x_coord: str, y_coord: str,
+                   kernel_size: int, bands: list[str]) -> pd.DataFrame:
         df = df_input.copy()
 
         # Calculate coordinates for sampling the raster.
@@ -190,6 +211,24 @@ def get_idxs_two_nearest(array, values):
             argmins[i, 1] = argmins[i, 0] + 1
 
     return argmins
+
+
+def get_idx(array, values):
+    """Find the pixel index in a raster covering the given coords.
+
+    Copied from https://github.com/ameliaholcomb/biomass-degradation.
+
+    Args:
+        array (n,): array of of raster coordinate values
+                    e.g. from raster.x.data
+        values (k,): coordinate values to find in the raster
+    Returns:
+        np.array(k,): indices containing coordinate values
+    """
+    nearest_idxs = np.zeros_like(values, dtype=np.int64)
+    for i, value in enumerate(values):
+        nearest_idxs[i] = (np.abs(array - value)).argmin()
+    return nearest_idxs
 
 
 def reproject_raster(file_path: str, out_file_path: str,

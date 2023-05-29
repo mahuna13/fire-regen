@@ -9,6 +9,19 @@ pd.options.mode.chained_assignment = None  # default='warn'
 logger = get_logger(__file__)
 
 
+def initial_l4a_shot_processing(gedi_gdf: pd.DataFrame):
+    gedi_gdf = process_shots(gedi_gdf)
+    gedi_gdf.rename(columns={"lon_lowestmode": "longitude",
+                             "lat_lowestmode": "latitude"}, inplace=True)
+
+    COLUMNS_TO_KEEP = ["shot_number", "longitude", "latitude", "agbd",
+                       "agbd_pi_lower", "agbd_pi_upper", "agbd_se",
+                       "beam_type", "sensitivity", "pft_class", "gedi_year",
+                       "gedi_month", "absolute_time"]
+
+    return gedi_gdf[COLUMNS_TO_KEEP]
+
+
 def get_gedi_as_gdp(csv_file_path: str) -> gpd.GeoDataFrame:
     gedi = pd.read_csv(csv_file_path, index_col=0)
     return gpd.GeoDataFrame(gedi,

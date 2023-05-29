@@ -25,7 +25,7 @@ def save_image_to_drive(image: ee.Image, polygon: shapely.Polygon, img_name: str
         'folder': GDRIVE_FOLDER_NAME,
         'scale': scale,
         'region': ee_geom.getInfo()['coordinates'],
-        'maxPixels': 500000000
+        'maxPixels': 538689467
     })
     task.start()
 
