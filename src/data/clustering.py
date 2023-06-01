@@ -66,6 +66,8 @@ def filter_within_geometry(gdf1, query_gpd: gpd.GeoDataFrame):
     return gdf1.sjoin(query_gpd, how="inner", predicate="within")
 
 
+'''
+TODO: Remove below code.
 print('Create terrain raster')
 terrain_raster = raster.RasterSampler(
     raster.TERRAIN_RASTER, raster.TERRAIN_BANDS)
@@ -102,3 +104,4 @@ print('Save results')
 result.to_csv(
     f'/maps/fire-regen/data/clustering/sierras_terrain_clustering_elevation_results.csv')
 # print(result[['cluster', 'shot_number']])
+'''

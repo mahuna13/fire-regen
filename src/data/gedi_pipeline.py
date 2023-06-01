@@ -24,9 +24,17 @@ def initial_l4a_shot_processing(gedi_gdf: pd.DataFrame):
 
 def get_gedi_as_gdp(csv_file_path: str) -> gpd.GeoDataFrame:
     gedi = pd.read_csv(csv_file_path, index_col=0)
+
+    if "lon_lowestmode" in gedi.columns:
+        longitude = "lon_lowestmode"
+        latitude = "lat_lowestmode"
+    else:
+        longitude = "longitude"
+        latitude = "latitude"
+
     return gpd.GeoDataFrame(gedi,
-                            geometry=gpd.points_from_xy(gedi.lon_lowestmode,
-                                                        gedi.lat_lowestmode),
+                            geometry=gpd.points_from_xy(gedi[longitude],
+                                                        gedi[latitude]),
                             crs=4326)
 
 
