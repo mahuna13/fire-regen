@@ -68,4 +68,9 @@ def nearest_neighbors(left_gdf, right_gdf, k_neighbors=1):
     return closest, dist
 
 
+def lat_lon_to_radians(gdf: gpd.GeoDataFrame):
+    def geom_to_radians(geom):
+        return (geom.x * np.pi / 180, geom.y * np.pi / 180)
 
+    geom_col = gdf.geometry.name
+    return np.array(gdf[geom_col].apply(geom_to_radians).to_list())
