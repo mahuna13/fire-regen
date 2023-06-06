@@ -39,7 +39,8 @@ def get_gedi_as_gdp(csv_file_path: str) -> gpd.GeoDataFrame:
 
 
 def process_shots(gedi_gdf: gpd.GeoDataFrame):
-    gedi_gdf.absolute_time = pd.to_datetime(gedi_gdf.absolute_time, utc=True)
+    gedi_gdf.absolute_time = pd.to_datetime(
+        gedi_gdf.absolute_time, utc=True, format='mixed')
 
     # Extract month and year of when GEDI shot was taken.
     gedi_gdf['gedi_year'] = gedi_gdf.absolute_time.dt.year
@@ -48,7 +49,7 @@ def process_shots(gedi_gdf: gpd.GeoDataFrame):
     return gedi_gdf
 
 
-def filter_shots(gedi_gdf: gpd.GeoDataFrame):
+def divide_shots_into_burned_and_unburned(gedi_gdf: gpd.GeoDataFrame):
     # Get rid of all the shots that are on the burn boundaries between burned
     # and unburned, or burned once and burned multiple times.
     gedi_gdf = gedi_gdf[
@@ -64,7 +65,8 @@ def filter_shots(gedi_gdf: gpd.GeoDataFrame):
 
     gedi_unburned = gedi_gdf[
         (gedi_gdf.burn_counts_median == 0) &
-        (gedi_gdf.burn_severity_median == 0)]
+        (gedi_gdf.burn_severity_median == 0) &
+        (gedi_gdf.burn_severity_std == 0)]
     logger.debug(f'Number of GEDI shots that never burned since 1984: \
         {gedi_unburned.shape[0]}')
 
@@ -78,6 +80,20 @@ def filter_shots(gedi_gdf: gpd.GeoDataFrame):
     return gedi_burned, gedi_unburned
 
 
+def exclude_shots_on_burn_boundaries(df: gpd.GeoDataFrame):
+    # Only look at pixels that burned exactly once.
+    df = df[df.burn_counts_median == 1]
+    logger.debug(f'Number of shots that burned exactly once: \
+                   {df.shape[0]}')
+
+    df = df[df.burn_severity_std == 0]
+    logger.debug(f'Number of GEDI shots that have a perfect match with burn \
+                   raster (all 2x2 pixels have the same severity): \
+                   {df.shape[0]}')
+
+    return df
+
+
 def filter_shots_for_regrowth_analysis(gedi_gdf: gpd.GeoDataFrame):
     # Get rid of shots where the GEDI shot happened before fire, since we're
     # only looking at recovery.
@@ -85,20 +101,13 @@ def filter_shots_for_regrowth_analysis(gedi_gdf: gpd.GeoDataFrame):
     logger.debug(f'Number of shots that happened after fires: \
                    {gedi_gdf.shape[0]}')
 
-    # Only look at pixels that burned exactly once.
-    gedi_gdf = gedi_gdf[gedi_gdf.burn_counts_median == 1]
-    logger.debug(f'Number of shots that burned exactly once: \
-                   {gedi_gdf.shape[0]}')
+    gedi_gdf_perfect = exclude_shots_on_burn_boundaries(gedi_gdf)
 
     # Only look at 2-4 burn severity categories.
-    gedi_gdf = gedi_gdf[gedi_gdf.burn_severity_median.isin([2, 3, 4])]
+    gedi_gdf_perfect = gedi_gdf_perfect[
+        gedi_gdf_perfect.burn_severity_median.isin([2, 3, 4])]
     logger.debug(f'Number of shots that burned in 2-4 categories: \
                    {gedi_gdf.shape[0]}')
-
-    gedi_gdf_perfect = gedi_gdf[gedi_gdf.burn_severity_std == 0]
-    logger.debug(f'Number of GEDI shots that have a perfect match with burn \
-                   raster (all 2x2 pixels have the same severity): \
-                   {gedi_gdf_perfect.shape[0]}')
 
     return gedi_gdf_perfect
 
@@ -118,26 +127,35 @@ def add_time_since_burn_categories(df: gpd.GeoDataFrame):
 
 
 def process_gedi_shots_for_regrowth_analysis(file_path: str, trees: bool):
-    gedi_gpd = get_gedi_as_gdp(file_path)
+    df = get_gedi_as_gdp(file_path)
     logger.debug(
         f'Total number of GEDI shots available for the region: \
-        {gedi_gpd.shape[0]}')
+        {df.shape[0]}')
 
-    gedi_gpd = process_shots(gedi_gpd)
+    df = process_shots(df)
 
-    gedi_burned, gedi_unburned = filter_shots(gedi_gpd)
-    gedi_burned = filter_shots_for_regrowth_analysis(gedi_burned)
+    df_burned, df_unburned = divide_shots_into_burned_and_unburned(df)
+    df_burned = filter_shots_for_regrowth_analysis(df_burned)
 
     # Add time since burn categories
-    gedi_burned = add_time_since_burn_categories(gedi_burned)
-    gedi_unburned = add_time_since_burn_categories(gedi_unburned)
+    df_burned = add_time_since_burn_categories(df_burned)
+    df_unburned = add_time_since_burn_categories(df_unburned)
 
     if trees:
-        gedi_burned_trees = filter_for_trees(gedi_burned)
-        gedi_unburned_trees = filter_for_trees(gedi_unburned)
-        return gedi_burned_trees, gedi_unburned_trees
+        df_burned_trees = filter_for_trees(df_burned)
+        df_unburned_trees = filter_for_trees(df_unburned)
+        return df_burned_trees, df_unburned_trees
     else:
-        return gedi_burned, gedi_unburned
+        return df_burned, df_unburned
+
+
+def process_gedi_shots_for_recent_fires_analysis(df: gpd.GeoDataFrame):
+    df = process_shots(df)
+
+    df_burned, df_unburned = divide_shots_into_burned_and_unburned(df)
+    df_burned = exclude_shots_on_burn_boundaries(df_burned)
+
+    return df_burned, df_unburned
 
 
 def print_burn_stats(df):
@@ -152,3 +170,7 @@ def print_burn_stats(df):
     print(f'High-burned ratio: {high_burn_ratio*100}%')
     print(f'Medium-burned ratio: {medium_burn_ratio*100}%')
     print(f'Low-burned ratio: {low_burn_ratio*100}%')
+
+
+def get_severity(df, severity):
+    return df[df.burn_severity_median == severity]

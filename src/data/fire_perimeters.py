@@ -47,6 +47,9 @@ class FirePerimeters:
         ''' Filter fire perimeters to be within geometries provided. '''
         self.perimeters = self.perimeters.sjoin(
             query_gpd, how="inner", predicate="within")
+
+        # Remove the index that was added in the sjoin, since it's not needed.
+        self.perimeters.drop(columns="index_right", inplace=True)
         return self
 
     def count(self):
