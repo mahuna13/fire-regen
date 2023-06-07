@@ -10,7 +10,7 @@ from sklearn.linear_model import LinearRegression
 from src.processing.recent_fires.gedi_matching import get_closest_matches
 
 
-def plot_severity_for_distance(df: pd.DataFrame, col: str):
+def plot_severity_for_distance(df: pd.DataFrame, col: str, lim: int = 700):
     palette = [sns.color_palette("rocket")[i] for i in [5, 3, 0]]
     fig, ax = plt.subplots(2, 2, figsize=(10, 10))
 
@@ -26,6 +26,11 @@ def plot_severity_for_distance(df: pd.DataFrame, col: str):
                     hue=hue, ax=ax[1][0], palette=palette)
     sns.scatterplot(get_closest_matches(df, 40), x=col, y=f'{col}_after',
                     hue=hue, ax=ax[1][1], palette=palette)
+
+    for i in [0, 1]:
+        for j in [0, 1]:
+            ax[i][j].set_xlim((0, lim))
+            ax[i][j].set_ylim((0, lim))
 
 
 def calculate_error_for_distances(df, distance_range, column_x, column_y):
@@ -146,3 +151,35 @@ def two_sided_tests(df, column):
 
     wilcoxon = stats.wilcoxon(df[column], df[f'{column}_after'])
     print(f'Wilcoxon test results: {wilcoxon}')
+
+
+def transform_pai_z_data(df, rel=False):
+    all_dfs = []
+    for severity in [2, 3, 4]:
+        for date_since in df.date_since.unique():
+            df_derived = _unpack_pai_z(df, severity, date_since, rel)
+            if df_derived is not None:
+                all_dfs.append(df_derived)
+    return pd.concat(all_dfs)
+
+
+def _unpack_pai_z(df, severity, date_since, rel):
+    if rel:
+        pai_z = df[(df.burn_severity_median == severity) & (
+            df.date_since == date_since)].pai_z_delta_np_rel.to_numpy()
+    else:
+        pai_z = df[(df.burn_severity_median == severity) & (
+            df.date_since == date_since)].pai_z_delta_np_diff.to_numpy()
+
+    if pai_z.shape[0] == 0:
+        return
+
+    unpacked = np.empty((pai_z.shape[0], pai_z[0].shape[0]))
+
+    for i in range(pai_z.shape[0]):
+        unpacked[i] = pai_z[i]
+
+    new_df = pd.melt(pd.DataFrame(unpacked))
+    new_df['severity'] = severity
+    new_df['date_since'] = date_since
+    return new_df
