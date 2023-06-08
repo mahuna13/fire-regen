@@ -33,6 +33,24 @@ def plot_severity_for_distance(df: pd.DataFrame, col: str, lim: int = 700):
             ax[i][j].set_ylim((0, lim))
 
 
+def plot_for_distance(df: pd.DataFrame, col: str, lim: int = 700):
+    fig, ax = plt.subplots(2, 2, figsize=(10, 10))
+
+    sns.scatterplot(get_closest_matches(df, 5), x=col, y=f'{col}_after',
+                    ax=ax[0][0])
+    sns.scatterplot(get_closest_matches(df, 10), x=col, y=f'{col}_after',
+                    ax=ax[0][1])
+    sns.scatterplot(get_closest_matches(df, 20), x=col, y=f'{col}_after',
+                    ax=ax[1][0])
+    sns.scatterplot(get_closest_matches(df, 40), x=col, y=f'{col}_after',
+                    ax=ax[1][1])
+
+    for i in [0, 1]:
+        for j in [0, 1]:
+            ax[i][j].set_xlim((0, lim))
+            ax[i][j].set_ylim((0, lim))
+
+
 def calculate_error_for_distances(df, distance_range, column_x, column_y):
     all_r2 = []
     all_num_matches = []
@@ -46,6 +64,16 @@ def calculate_error_for_distances(df, distance_range, column_x, column_y):
             all_num_matches.append(matches.shape[0])
 
     return all_r2, all_num_matches
+
+
+def plot_control_error_for_distances(df, column):
+    distances = range(1, 50)
+
+    fig, ax = plt.subplots(1, 2, figsize=(10, 5))
+    r2s, num_matches = calculate_error_for_distances(
+        df, distances, column, f'{column}_after')
+    sns.lineplot(x=distances, y=r2s, ax=ax[0])
+    sns.lineplot(x=distances, y=num_matches, ax=ax[1])
 
 
 def plot_error_for_distances(df, column):
@@ -107,6 +135,12 @@ def plot_rel_difference_per_severity(df, column):
                      x=f'{column}_rel', ax=ax[row_idx])
         ax[row_idx].set_xlim((0, 2))
         row_idx += 1
+
+
+def plot_rel_difference(df, column):
+    fig, ax = plt.subplots(1, 1, figsize=(5, 5), sharex=True)
+    sns.histplot(df, x=f'{column}_rel', ax=ax)
+    ax.set_xlim((0, 2))
 
 
 def get_severity(df, severity):
