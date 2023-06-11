@@ -71,7 +71,20 @@ class Fire:
         # Create a gdf to store the area around the fire, called fire buffer.
         fire_geometry = self.fire.geometry.iloc[0]
         self.fire_buffer = gpd.GeoSeries([fire_geometry.buffer(
-            0.1).symmetric_difference(fire_geometry)])
+            1000).symmetric_difference(fire_geometry)])
+
+    def get_buffer(self, width: int, exclusion_zone: int = 100):
+        # convert to projected CRS to be able to specify distances in meters.
+        fire_projected = self.fire.to_crs(epsg=3310)
+
+        fire_geom = fire_projected.geometry.iloc[0]
+
+        exclude = fire_geom.buffer(
+            exclusion_zone).union(fire_geom)
+        buffer = exclude.buffer(width).symmetric_difference(exclude)
+
+        return gpd.GeoDataFrame(geometry=gpd.GeoSeries([buffer]), crs=3310) \
+            .to_crs(4326)
 
     def overlay_fire_map(self, gdf: gpd.GeoDataFrame):
         self.fire.overlay(gdf, how="union").plot(cmap='tab20b')

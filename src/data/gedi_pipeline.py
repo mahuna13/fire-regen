@@ -1,97 +1,17 @@
+import ee
+from src.data import gedi_loader, gedi_raster_matching
+from src.constants import DATA_PATH, USER_PATH
 from src.utils.logging_util import get_logger
 import seaborn as sns
 import geopandas as gpd
 import pandas as pd
 import numpy as np
+from src.data.ee import lcms_import
+from src.data import ee_utils
 pd.options.mode.chained_assignment = None  # default='warn'
 
 
 logger = get_logger(__file__)
-
-
-def initial_l4a_shot_processing(gedi_gdf: pd.DataFrame):
-    gedi_gdf = process_shots(gedi_gdf)
-    gedi_gdf.rename(columns={"lon_lowestmode": "longitude",
-                             "lat_lowestmode": "latitude"}, inplace=True)
-
-    COLUMNS_TO_KEEP = ["shot_number", "longitude", "latitude", "agbd",
-                       "agbd_pi_lower", "agbd_pi_upper", "agbd_se",
-                       "beam_type", "sensitivity", "pft_class", "gedi_year",
-                       "gedi_month", "absolute_time"]
-
-    return gedi_gdf[COLUMNS_TO_KEEP]
-
-
-def get_gedi_as_gdp(csv_file_path: str) -> gpd.GeoDataFrame:
-    gedi = pd.read_csv(csv_file_path, index_col=0)
-
-    if "lon_lowestmode" in gedi.columns:
-        longitude = "lon_lowestmode"
-        latitude = "lat_lowestmode"
-    else:
-        longitude = "longitude"
-        latitude = "latitude"
-
-    return gpd.GeoDataFrame(gedi,
-                            geometry=gpd.points_from_xy(gedi[longitude],
-                                                        gedi[latitude]),
-                            crs=4326)
-
-
-def process_shots(gedi_gdf: gpd.GeoDataFrame):
-    gedi_gdf.absolute_time = pd.to_datetime(
-        gedi_gdf.absolute_time, utc=True, format='mixed')
-
-    # Extract month and year of when GEDI shot was taken.
-    gedi_gdf['gedi_year'] = gedi_gdf.absolute_time.dt.year
-    gedi_gdf['gedi_month'] = gedi_gdf.absolute_time.dt.month
-
-    return gedi_gdf
-
-
-def divide_shots_into_burned_and_unburned(gedi_gdf: gpd.GeoDataFrame):
-    # Get rid of all the shots that are on the burn boundaries between burned
-    # and unburned, or burned once and burned multiple times.
-    gedi_gdf = gedi_gdf[
-        (gedi_gdf.burn_counts_std == 0) &
-        (gedi_gdf.burn_year_std == 0)]
-    logger.debug(f'Excluded shots on the burn boundaries, shots remaining: \
-        {gedi_gdf.shape[0]}')
-
-    # Divide GEDI shots into burned and unburned.
-    gedi_burned = gedi_gdf[gedi_gdf.burn_counts_median > 0]
-    logger.debug(f'Number of GEDI shots that burned at least once: \
-                 {gedi_burned.shape[0]}')
-
-    gedi_unburned = gedi_gdf[
-        (gedi_gdf.burn_counts_median == 0) &
-        (gedi_gdf.burn_severity_median == 0) &
-        (gedi_gdf.burn_severity_std == 0)]
-    logger.debug(f'Number of GEDI shots that never burned since 1984: \
-        {gedi_unburned.shape[0]}')
-
-    # For the burned shots, calculate time in years since they burned.
-    gedi_burned['time_since_burn'] = gedi_burned.gedi_year - \
-        gedi_burned.burn_year_median
-
-    # For unburned, just set the time to -1.
-    gedi_unburned['time_since_burn'] = -1
-
-    return gedi_burned, gedi_unburned
-
-
-def exclude_shots_on_burn_boundaries(df: gpd.GeoDataFrame):
-    # Only look at pixels that burned exactly once.
-    df = df[df.burn_counts_median == 1]
-    logger.debug(f'Number of shots that burned exactly once: \
-                   {df.shape[0]}')
-
-    df = df[df.burn_severity_std == 0]
-    logger.debug(f'Number of GEDI shots that have a perfect match with burn \
-                   raster (all 2x2 pixels have the same severity): \
-                   {df.shape[0]}')
-
-    return df
 
 
 def filter_shots_for_regrowth_analysis(gedi_gdf: gpd.GeoDataFrame):
@@ -174,3 +94,351 @@ def print_burn_stats(df):
 
 def get_severity(df, severity):
     return df[df.burn_severity_median == severity]
+
+
+'''
+Stage 7 of the GEDI pipeline - Filter Land Cover.
+'''
+
+
+def load_stage_7(kernel: int):
+    gedi_burned = get_gedi_as_gdp(
+        f"{DATA_PATH}/sierras_gedi_shots_stage_7_{kernel}x{kernel}_burned.csv")
+
+    gedi_unburned = get_gedi_as_gdp(
+        f"{DATA_PATH}/sierras_gedi_shots_stage_7_{kernel}x{kernel}_unburned.csv")
+
+    return gedi_burned, gedi_unburned
+
+
+def stage_7_filter_land_cover_l4a_sierras(kernel: int, save: bool = True):
+    gedi_burned, gedi_unburned = load_stage_6(kernel)
+
+    # Keep only trees.
+    gedi_burned = gedi_burned[
+        (gedi_burned.land_cover_std == 0) &
+        (gedi_burned.land_cover_median == 1)]
+
+    # Keep only unburned trees.
+    gedi_unburned_lc = gedi_raster_matching.match_landcover_for_year(
+        2021, gedi_unburned, 3)
+    gedi_unburned = gedi_unburned[
+        (gedi_unburned_lc.land_cover_std == 0) &
+        (gedi_unburned_lc.land_cover_median == 1)]
+
+    if save:
+        logger.debug(
+            f"Saving stage 7 processed burned shots as CSV, \
+            for kernel {kernel}.")
+        gedi_burned.to_csv(
+            f"{DATA_PATH}/sierras_gedi_shots_stage_7_{kernel}x{kernel}_burned.csv")
+
+        logger.debug(
+            f"Saving stage 7 processed unburned shots as CSV, \
+            for kernel {kernel}.")
+        gedi_unburned.to_csv(
+            f"{DATA_PATH}/sierras_gedi_shots_stage_7_{kernel}x{kernel}_unburned.csv")
+
+    return gedi_burned, gedi_unburned
+
+
+'''
+Stage 6 of the GEDI pipeline - Match Land Cover.
+'''
+
+
+def load_stage_6(kernel: int):
+    gedi_burned = get_gedi_as_gdp(
+        f"{DATA_PATH}/sierras_gedi_shots_stage_6_{kernel}x{kernel}_burned.csv")
+
+    gedi_unburned = get_gedi_as_gdp(
+        f"{DATA_PATH}/sierras_gedi_shots_stage_5_{kernel}x{kernel}_unburned.csv")
+
+    return gedi_burned, gedi_unburned
+
+
+def stage_6_match_land_cover_l4a_sierras(kernel: int, save: bool = True):
+    # For each burn year, we want to match it to the land cover of the previous
+    # year.
+    gedi = get_gedi_as_gdp(
+        f"{DATA_PATH}/sierras_gedi_shots_stage_5_{kernel}x{kernel}_burned.csv")
+
+    result = gedi_raster_matching.match_burn_landcover(gedi, 3)
+    if save:
+        logger.debug(
+            f"Saving stage 6 processed burned shots as CSV, \
+            for kernel {kernel}.")
+        result.to_csv(
+            f"{DATA_PATH}/sierras_gedi_shots_stage_6_{kernel}x{kernel}_burned.csv")
+
+    return result
+
+
+def match_land_cover_on_burned_regions(gedi: gpd.GeoDataFrame, kernel: int):
+    # For each burn year, we want to match it to the land cover of the previous
+    # year.
+    gedi_raster_matching.match_burn_landcover(gedi, 3)
+
+
+'''
+Stage 5 of the GEDI pipeline - Filter for regrowth analysis.
+'''
+
+
+def load_stage_5(kernel: int):
+    gedi_burned = get_gedi_as_gdp(
+        f"{DATA_PATH}/sierras_gedi_shots_stage_5_{kernel}x{kernel}_burned.csv")
+
+    gedi_unburned = get_gedi_as_gdp(
+        f"{DATA_PATH}/sierras_gedi_shots_stage_5_{kernel}x{kernel}_unburned.csv")
+
+    return gedi_burned, gedi_unburned
+
+
+def stage_5_filter_for_regrowth_l4a_sierras(kernel: int, save: bool = True):
+    gedi_burned, gedi_unburned = stage_4_filter_burns_l4a_sierras(kernel)
+
+    gedi_burned = filter_shots_for_regrowth_analysis(gedi_burned)
+
+    if save:
+        logger.debug(
+            f"Saving stage 5 processed burned shots as CSV, \
+            for kernel {kernel}.")
+        gedi_burned.to_csv(
+            f"{DATA_PATH}/sierras_gedi_shots_stage_5_{kernel}x{kernel}_burned.csv")
+
+        logger.debug(
+            f"Saving stage 5 processed unburned shots as CSV, \
+            for kernel {kernel}.")
+        gedi_unburned.to_csv(
+            f"{DATA_PATH}/sierras_gedi_shots_stage_5_{kernel}x{kernel}_unburned.csv")
+
+    return gedi_burned, gedi_unburned
+
+
+def filter_shots_for_regrowth_analysis(gedi_gdf: gpd.GeoDataFrame):
+    # Get rid of shots where the GEDI shot happened before fire, since we're
+    # only looking at recovery.
+    gedi_gdf = gedi_gdf[gedi_gdf.time_since_burn > 0]
+    logger.debug(f'Number of shots that happened after fires: \
+                   {gedi_gdf.shape[0]}')
+
+    # Only look at 2-4 burn severity categories.
+    gedi_gdf = gedi_gdf[
+        gedi_gdf.burn_severity_median.isin([2, 3, 4])]
+    logger.debug(f'Number of shots that burned in 2-4 categories: \
+                   {gedi_gdf.shape[0]}')
+
+    return gedi_gdf
+
+
+'''
+Stage 4 of the GEDI pipeline - Filter for burned areas.
+
+Takes about 30s on all Sierra shots, so I'm not saving it as intermediate at
+the moment.
+'''
+
+
+def stage_4_filter_burns_l4a_sierras(kernel: int):
+    logger.debug("Read in intermediate data from stage 3.")
+    gedi = get_gedi_as_gdp(
+        f"{DATA_PATH}/sierras_gedi_shots_stage_3_{kernel}x{kernel}.csv")
+
+    logger.debug("Filter burn areas.")
+    return filter_burn_areas(gedi, kernel)
+
+
+def filter_burn_areas(gedi: gpd.GeoDataFrame, kernel: int):
+    gedi_burned, gedi_unburned = divide_shots_into_burned_and_unburned(gedi)
+    gedi_burned = exclude_shots_on_burn_boundaries(gedi_burned)
+
+    # Remove 3x3 columns, as they are not relevant any more since all shots at
+    # the boundary have been excluded.
+    columns_to_drop = [f"burn_severity_{kernel}x{kernel}",
+                       f"burn_counts_{kernel}x{kernel}",
+                       f"burn_year_{kernel}x{kernel}",
+                       "burn_severity_mean",
+                       "burn_counts_mean",
+                       "burn_year_mean",
+                       "burn_severity_std",
+                       "burn_counts_std",
+                       "burn_year_std"]
+
+    columns_to_rename = {"burn_severity_medium": "severity",
+                         "burn_counts_medium": "burn_count",
+                         "burn_year_medium": "burn_year"}
+
+    gedi_burned.drop(columns=columns_to_drop, inplace=True)
+    gedi_unburned.drop(columns=columns_to_drop, inplace=True)
+    gedi_burned.rename(columns=columns_to_rename, inplace=True)
+    gedi_unburned.rename(columns=columns_to_rename, inplace=True)
+    return gedi_burned, gedi_unburned
+
+
+def divide_shots_into_burned_and_unburned(gedi_gdf: gpd.GeoDataFrame):
+    # Get rid of all the shots that are on the burn boundaries between burned
+    # and unburned, or burned once and burned multiple times.
+    gedi_gdf = gedi_gdf[
+        (gedi_gdf.burn_counts_std == 0) &
+        (gedi_gdf.burn_year_std == 0)]
+    logger.debug(f'Excluded shots on the burn boundaries, shots remaining: \
+        {gedi_gdf.shape[0]}')
+
+    # Divide GEDI shots into burned and unburned.
+    gedi_burned = gedi_gdf[gedi_gdf.burn_counts_median > 0]
+    logger.debug(f'Number of GEDI shots that burned at least once: \
+                 {gedi_burned.shape[0]}')
+
+    gedi_unburned = gedi_gdf[
+        (gedi_gdf.burn_counts_median == 0) &
+        (gedi_gdf.burn_severity_median == 0) &
+        (gedi_gdf.burn_severity_std == 0)]
+    logger.debug(f'Number of GEDI shots that never burned since 1984: \
+        {gedi_unburned.shape[0]}')
+
+    # For the burned shots, calculate time in years since they burned.
+    gedi_burned['time_since_burn'] = gedi_burned.gedi_year - \
+        gedi_burned.burn_year_median
+
+    # For unburned, just set the time to -1.
+    gedi_unburned['time_since_burn'] = -1
+
+    return gedi_burned, gedi_unburned
+
+
+def exclude_shots_on_burn_boundaries(df: gpd.GeoDataFrame):
+    # Only look at pixels that burned exactly once.
+    df = df[df.burn_counts_median == 1]
+    logger.debug(f'Number of shots that burned exactly once: \
+                   {df.shape[0]}')
+
+    df = df[df.burn_severity_std == 0]
+    logger.debug(f'Number of GEDI shots that have a perfect match with burn \
+                   raster (all 2x2 pixels have the same severity): \
+                   {df.shape[0]}')
+
+    return df
+
+
+'''
+Stage 3 of the GEDI pipeline - Match GEDI shots with MTBS burn raster.
+'''
+
+
+def stage_3_match_burn_raster_l4a_sierras(kernel: int, save: bool = True):
+    gedi = get_gedi_as_gdp(f"{DATA_PATH}/sierras_gedi_shots_stage_2.csv")
+    match = gedi_raster_matching.match_burn_raster(gedi, kernel)
+    if save:
+        logger.debug(
+            f"Saving stage 3 processed shots as CSV, for kernel {kernel}.")
+        match.to_csv(
+            f"{DATA_PATH}/sierras_gedi_shots_stage_3_{kernel}x{kernel}.csv")
+    return match
+
+
+'''
+Stage 2 of the GEDI pipeline - Basic data cleanup:
+    1. Drop columns that are not relevant.
+    2. Rename columns to make more sense.
+    3. Convert it into GeoDataFrame.
+'''
+
+
+def stage_2_basic_processing_of_l4a_sierras_data(save: bool = True):
+    gedi = get_gedi_as_gdp(f"{DATA_PATH}/sierras_gedi_shots.csv")
+    gedi = initial_l4a_shot_processing(gedi)
+    if save:
+        logger.debug("Saving stage 2 processed shots as CSV.")
+        gedi.to_csv(f"{DATA_PATH}/sierras_gedi_shots_stage_2.csv")
+    return gedi
+
+
+def initial_l4a_shot_processing(gedi_gdf: pd.DataFrame):
+    gedi_gdf.absolute_time = pd.to_datetime(
+        gedi_gdf.absolute_time, utc=True, format='mixed')
+
+    # Extract month and year of when GEDI shot was taken.
+    gedi_gdf['gedi_year'] = gedi_gdf.absolute_time.dt.year
+    gedi_gdf['gedi_month'] = gedi_gdf.absolute_time.dt.month
+
+    gedi_gdf.rename(columns={"lon_lowestmode": "longitude",
+                             "lat_lowestmode": "latitude"}, inplace=True)
+
+    COLUMNS_TO_KEEP = ["shot_number", "longitude", "latitude", "agbd",
+                       "agbd_pi_lower", "agbd_pi_upper", "agbd_se",
+                       "beam_type", "sensitivity", "pft_class", "gedi_year",
+                       "gedi_month", "absolute_time"]
+
+    return gedi_gdf[COLUMNS_TO_KEEP]
+
+
+def get_gedi_as_gdp(csv_file_path: str) -> gpd.GeoDataFrame:
+    gedi = pd.read_csv(csv_file_path, index_col=0)
+
+    if "lon_lowestmode" in gedi.columns:
+        longitude = "lon_lowestmode"
+        latitude = "lat_lowestmode"
+    else:
+        longitude = "longitude"
+        latitude = "latitude"
+
+    return gpd.GeoDataFrame(gedi,
+                            geometry=gpd.points_from_xy(gedi[longitude],
+                                                        gedi[latitude]),
+                            crs=4326)
+
+
+'''
+Stage 1 of the GEDI pipeline: Loading GEDI shots from postgres database for 
+geometries of interest, and saving them in CSV files.
+
+Two regions that we're working on in this project: Sierras and SEKI (Sequoia
+and Kings National Park). We use Convex hull as a shapefile, because it's 
+faster than giving it a Multipolygon with many verteces 
+(plus, there may be a limit).
+
+At this point, the shots in these files are minimally processed, taking into 
+account just quality and degrade flags. All of that filtering is done in 
+gedi_loader class.
+'''
+
+
+def fetch_from_db_gedi_l4a_for_sierras(save: bool = True):
+    sierras = gpd.read_file(
+        f"{USER_PATH}/data/shapefiles/sierras_convex_hull.shp")
+    gedi_l4a = gedi_loader.get_l4a_gedi_shots(geometry=sierras.geometry)
+
+    if save:
+        gedi_l4a.to_csv(f"{DATA_PATH}/sierras_gedi_shots.csv")
+    return gedi_l4a
+
+
+def fetch_from_db_gedi_l2b_for_sierras(save: bool = True):
+    sierras = gpd.read_file(
+        f"{USER_PATH}/data/shapefiles/sierras_convex_hull.shp")
+    gedi_l4a = gedi_loader.get_l2b_gedi_shots(geometry=sierras.geometry)
+
+    if save:
+        gedi_l4a.to_csv(f"{DATA_PATH}/sierras_gedi_l2b_shots.csv")
+    return gedi_l4a
+
+
+def fetch_from_db_gedi_l4a_for_seki(save: bool = True):
+    sierras = gpd.read_file(
+        f"{USER_PATH}/data/shapefiles/seki_convex_hull.shp")
+    gedi_l4a = gedi_loader.get_l4a_gedi_shots(geometry=sierras.geometry)
+
+    if save:
+        gedi_l4a.to_csv(f"{DATA_PATH}/seki_gedi_shots.csv")
+    return gedi_l4a
+
+
+def fetch_from_db_gedi_l2b_for_seki(save: bool = True):
+    sierras = gpd.read_file(
+        f"{USER_PATH}/data/shapefiles/seki_convex_hull.shp")
+    gedi_l4a = gedi_loader.get_l2b_gedi_shots(geometry=sierras.geometry)
+
+    if save:
+        gedi_l4a.to_csv(f"{DATA_PATH}/seki_gedi_l2b_shots.csv")
+    return gedi_l4a

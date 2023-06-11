@@ -64,7 +64,7 @@ def get_l2b_gedi_shots(
     return gedi_shots
 
 
-def get_gedi_shots(
+def get_l4a_gedi_shots(
     geometry: gpd.GeoDataFrame,
     start_year: int = 2019,
     end_year: int = 2023,

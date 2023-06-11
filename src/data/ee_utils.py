@@ -1,4 +1,6 @@
 import ee
+from functools import reduce
+import geopandas as gpd
 import numpy as np
 import shapely
 from src.utils.logging_util import get_logger
@@ -46,3 +48,12 @@ def save_image_to_drive_per_band(image: ee.Image, polygon: shapely.Polygon, img_
         export_img = image.select(band_name)
         save_image_to_drive(export_img, polygon,
                             img_name + '_' + band_name, scale)
+
+
+def gedi_coordinates_to_feature_collection(gedi: gpd.GeoDataFrame):
+    x_coord = gedi.longitude.values
+    y_coord = gedi.latitude.values
+    features = [ee.Feature(ee.Geometry.Point(x, y))
+                for x, y in zip(x_coord, y_coord)]
+    print(len(features))
+    return ee.FeatureCollection(features)
