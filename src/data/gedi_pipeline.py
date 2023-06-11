@@ -97,6 +97,108 @@ def get_severity(df, severity):
 
 
 '''
+Stage 9 of the GEDI pipeline - Filter Terrain.
+'''
+
+
+def load_stage_9(kernel: int):
+    gedi_burned = get_gedi_as_gdp(
+        f"{DATA_PATH}/sierras_gedi_shots_stage_9_{kernel}x{kernel}_burned.csv")
+
+    gedi_unburned = get_gedi_as_gdp(
+        f"{DATA_PATH}/sierras_gedi_shots_stage_9_{kernel}x{kernel}_unburned.csv")
+
+    return gedi_burned, gedi_unburned
+
+
+def stage_9_filter_terrain_l4a_sierras(kernel: int, save: bool = True):
+    # For each burn year, we want to match it to the land cover of the previous
+    # year.
+    gedi_burned, gedi_unburned = load_stage_8(kernel)
+
+    # First, match soil, so that all the pixels in the kernel have the same
+    # soil.
+    gedi_burned = gedi_burned[gedi_burned.soil_std == 0]
+    gedi_unburned = gedi_unburned[gedi_unburned.soil_std == 0]
+
+    columns_to_drop = [f"soil_{kernel}x{kernel}",
+                       f"aspect_{kernel}x{kernel}",
+                       f"elevation_{kernel}x{kernel}",
+                       f"slope_{kernel}x{kernel}",
+                       "soil_mean",
+                       "aspect_median",
+                       "elevation_median",
+                       "slope_median",
+                       "soil_std",
+                       "aspect_std",
+                       "elevation_std",
+                       "slope_std"]
+
+    columns_to_rename = {"soil_median": "soil",
+                         "aspect_mean": "aspect",
+                         "slope_mean": "slope",
+                         "elevation_mean": "elevation"}
+
+    gedi_burned.drop(columns=columns_to_drop, inplace=True)
+    gedi_unburned.drop(columns=columns_to_drop, inplace=True)
+    gedi_burned.rename(columns=columns_to_rename, inplace=True)
+    gedi_unburned.rename(columns=columns_to_rename, inplace=True)
+
+    if save:
+        logger.debug(
+            f"Saving stage 9 processed burned shots as CSV, \
+            for kernel {kernel}.")
+        gedi_burned.to_csv(
+            f"{DATA_PATH}/sierras_gedi_shots_stage_9_{kernel}x{kernel}_burned.csv")
+
+        logger.debug(
+            f"Saving stage 9 processed unburned shots as CSV, \
+            for kernel {kernel}.")
+        gedi_unburned.to_csv(
+            f"{DATA_PATH}/sierras_gedi_shots_stage_9_{kernel}x{kernel}_unburned.csv")
+
+    return gedi_burned, gedi_unburned
+
+
+'''
+Stage 8 of the GEDI pipeline - Match Terrain.
+'''
+
+
+def load_stage_8(kernel: int):
+    gedi_burned = get_gedi_as_gdp(
+        f"{DATA_PATH}/sierras_gedi_shots_stage_8_{kernel}x{kernel}_burned.csv")
+
+    gedi_unburned = get_gedi_as_gdp(
+        f"{DATA_PATH}/sierras_gedi_shots_stage_8_{kernel}x{kernel}_unburned.csv")
+
+    return gedi_burned, gedi_unburned
+
+
+def stage_8_match_terrain_l4a_sierras(kernel: int, save: bool = True):
+    # For each burn year, we want to match it to the land cover of the previous
+    # year.
+    gedi_burned, gedi_unburned = load_stage_7(kernel)
+
+    gedi_burned = gedi_raster_matching.match_terrain(gedi_burned, kernel)
+    gedi_unburned = gedi_raster_matching.match_terrain(gedi_unburned, kernel)
+    if save:
+        logger.debug(
+            f"Saving stage 8 processed burned shots as CSV, \
+            for kernel {kernel}.")
+        gedi_burned.to_csv(
+            f"{DATA_PATH}/sierras_gedi_shots_stage_8_{kernel}x{kernel}_burned.csv")
+
+        logger.debug(
+            f"Saving stage 8 processed unburned shots as CSV, \
+            for kernel {kernel}.")
+        gedi_unburned.to_csv(
+            f"{DATA_PATH}/sierras_gedi_shots_stage_8_{kernel}x{kernel}_unburned.csv")
+
+    return gedi_burned, gedi_unburned
+
+
+'''
 Stage 7 of the GEDI pipeline - Filter Land Cover.
 '''
 
@@ -160,24 +262,17 @@ def load_stage_6(kernel: int):
 def stage_6_match_land_cover_l4a_sierras(kernel: int, save: bool = True):
     # For each burn year, we want to match it to the land cover of the previous
     # year.
-    gedi = get_gedi_as_gdp(
-        f"{DATA_PATH}/sierras_gedi_shots_stage_5_{kernel}x{kernel}_burned.csv")
+    gedi_burned, gedi_unburned = load_stage_5(kernel)
 
-    result = gedi_raster_matching.match_burn_landcover(gedi, 3)
+    gedi_burned = gedi_raster_matching.match_burn_landcover(gedi_burned, 3)
     if save:
         logger.debug(
             f"Saving stage 6 processed burned shots as CSV, \
             for kernel {kernel}.")
-        result.to_csv(
+        gedi_burned.to_csv(
             f"{DATA_PATH}/sierras_gedi_shots_stage_6_{kernel}x{kernel}_burned.csv")
 
-    return result
-
-
-def match_land_cover_on_burned_regions(gedi: gpd.GeoDataFrame, kernel: int):
-    # For each burn year, we want to match it to the land cover of the previous
-    # year.
-    gedi_raster_matching.match_burn_landcover(gedi, 3)
+    return gedi_burned, gedi_unburned
 
 
 '''

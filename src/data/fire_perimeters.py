@@ -84,7 +84,7 @@ class Fire:
         buffer = exclude.buffer(width).symmetric_difference(exclude)
 
         return gpd.GeoDataFrame(geometry=gpd.GeoSeries([buffer]), crs=3310) \
-            .to_crs(4326)
+            .to_crs(self.fire.crs)
 
     def overlay_fire_map(self, gdf: gpd.GeoDataFrame):
         self.fire.overlay(gdf, how="union").plot(cmap='tab20b')

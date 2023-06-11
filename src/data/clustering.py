@@ -50,11 +50,10 @@ def find_closest_in_cluster(
 def cluster(df, feature_cols, n_clusters=5, verbose=0):
     # Limit threads, without it BLAS causes segmentation error.
     # TODO: link to the documentation about this error.
-    pprint(threadpool_info())
     threadpool_limits(limits=1)
     threadpool_limits(limits=1, user_api='blas')
 
-    km = MiniBatchKMeans(n_clusters=n_clusters, verbose=verbose)
+    km = MiniBatchKMeans(n_clusters=n_clusters, verbose=verbose, n_init='auto')
     km.fit(df[feature_cols])
     output = df.assign(cluster=km.predict(df[feature_cols]))
 

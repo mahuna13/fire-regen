@@ -35,12 +35,7 @@ def match_burn_raster(
 ) -> gpd.GeoDataFrame:
     burn_raster = raster.RasterSampler(BURN_DATA_RASTER, BURN_RASTER_BANDS)
 
-    if kernel == 1:
-        return burn_raster.sample(gedi, 'longitude', 'latitude')
-    elif kernel == 2:
-        return burn_raster.sample_2x2(gedi, 'longitude', 'latitude')
-    elif kernel == 3:
-        return burn_raster.sample_3x3(gedi, 'longitude', 'latitude')
+    return sample_raster(burn_raster, gedi, kernel)
 
 
 def match_burn_landcover(
@@ -70,9 +65,26 @@ def match_landcover_for_year(
     lcsm_raster = raster.RasterSampler(
         LCSM_RASTER(raster_year), LAND_COVER_BANDS)
 
+    return sample_raster(lcsm_raster, df, kernel)
+
+
+def match_terrain(
+    df: gpd.GeoDataFrame,
+    kernel: int
+) -> gpd.GeoDataFrame:
+    terrain_raster = raster.RasterSampler(TERRAIN_RASTER, TERRAIN_BANDS)
+
+    return sample_raster(terrain_raster, df, kernel)
+
+
+def sample_raster(
+    raster_sampler: raster.RasterSampler,
+    df: gpd.GeoDataFrame,
+    kernel: int
+):
     if kernel == 1:
-        return lcsm_raster.sample(df, 'longitude', 'latitude')
+        return raster_sampler.sample(df, 'longitude', 'latitude')
     elif kernel == 2:
-        return lcsm_raster.sample_2x2(df, 'longitude', 'latitude')
+        return raster_sampler.sample_2x2(df, 'longitude', 'latitude')
     elif kernel == 3:
-        return lcsm_raster.sample_3x3(df, 'longitude', 'latitude')
+        return raster_sampler.sample_3x3(df, 'longitude', 'latitude')
