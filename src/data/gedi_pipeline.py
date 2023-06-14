@@ -176,8 +176,6 @@ def load_stage_8(kernel: int):
 
 
 def stage_8_match_terrain_l4a_sierras(kernel: int, save: bool = True):
-    # For each burn year, we want to match it to the land cover of the previous
-    # year.
     gedi_burned, gedi_unburned = load_stage_7(kernel)
 
     gedi_burned = gedi_raster_matching.match_terrain(gedi_burned, kernel)

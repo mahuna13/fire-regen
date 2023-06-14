@@ -17,14 +17,14 @@ def gdf_to_ee_polygon(gdf_polygon: shapely.Polygon) -> ee.Geometry.Polygon:
     return ee.Geometry.Polygon(coords)
 
 
-def save_image_to_drive(image: ee.Image, polygon: shapely.Polygon, img_name: str, scale: int, debug: bool = False):
+def save_image_to_drive(image: ee.Image, polygon: shapely.Polygon, img_name: str, scale: int, debug: bool = False, subfolder=""):
     ''' Creates a task to save ee.Image to Google Drive as a tif. '''
     ee_geom = gdf_to_ee_polygon(polygon)
     task = ee.batch.Export.image.toDrive(**{
         'image': image,
         'description': img_name,
         'fileNamePrefix': img_name,
-        'folder': GDRIVE_FOLDER_NAME,
+        'folder': GDRIVE_FOLDER_NAME + subfolder,
         'scale': scale,
         'region': ee_geom.getInfo()['coordinates'],
         'maxPixels': 538689467
