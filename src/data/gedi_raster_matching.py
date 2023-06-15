@@ -84,10 +84,10 @@ def match_burn_landcover(
     kernel: int
 ) -> gpd.GeoDataFrame:
     matches = []
-    for burn_year in gedi.burn_year_median.astype('int').unique():
+    for burn_year in gedi.burn_year.astype('int').unique():
         logger.debug(f"Matching land cover for year {burn_year}.")
 
-        gedi_year = gedi[gedi.burn_year_median == burn_year]
+        gedi_year = gedi[gedi.burn_year == burn_year]
         match = match_landcover_for_year(burn_year, gedi_year, kernel)
         matches.append(match)
     return pd.concat(matches)
