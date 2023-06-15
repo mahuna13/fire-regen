@@ -16,7 +16,8 @@ TERRAIN_RASTER = '/maps/fire-regen/data/rasters/TERRAIN/terrain_stack.tif'
 
 
 def LANDSAT_RASTER(year):
-    return f"/maps/fire-regen/data/rasters/LANDSAT/{year}/out/landsat_{year}_stack.tif"
+    landsat_num = which_landsat(year)
+    return f"/maps/fire-regen/data/rasters/LANDSAT/{year}/landsat{landsat_num}_{year}.tif"
 
 
 def LANDSAT5_RASTER(year):
@@ -35,27 +36,21 @@ def LCSM_RASTER(year):
     return f"/maps/fire-regen/data/rasters/lcsm/lcms_{year}.tif"
 
 
-BURN_RASTER_BANDS = {0: 'burn_severity', 1: 'burn_year', 2: 'burn_counts'}
-LAND_COVER_BANDS = {0: 'land_cover'}
-TERRAIN_BANDS = {0: 'elevation', 1: 'slope', 2: 'aspect', 3: 'soil'}
-LANDSAT_BANDS = {0: 'nbr', 1: 'ndvi', 2: 'SR_B1', 3: 'SR_B2',
-                 4: 'SR_B3', 5: 'SR_B4', 6: 'SR_B5', 7: 'SR_B6', 8: 'SR_B7'}
-LANDSAT5_BANDS = {0: 'SR_B1', 1: 'SR_B2',
-                  2: 'SR_B3', 3: 'SR_B4', 4: 'SR_B5', 5: 'SR_B7',
-                  6: 'ndvi'}
-LANDSAT8_ADV_BANDS = {0: "SR_B1", 1: "SR_B2", 2: "SR_B3", 3: "SR_B4",
-                      4: "SR_B5", 5: "SR_B6", 6: "SR_B7", 7: "NDVI", 8: "NDWI",
-                      9: "NBR", 10: "NDMI", 11: "SWIRS", 12: "SVVI",
-                      13: "brightness", 14: "greenness", 15: "wetness"}
+BURN_RASTER_BANDS = ['burn_severity', 'burn_year', 'burn_counts']
+LAND_COVER_BANDS = ['land_cover']
+TERRAIN_BANDS = ['elevation', 'slope', 'aspect', 'soil']
+LANDSAT5_BANDS = ['SR_B1', 'SR_B2', 'SR_B3', 'SR_B4', 'SR_B5', 'SR_B7', 'NDVI']
+LANDSAT8_BANDS = ["SR_B1", "SR_B2", "SR_B3", "SR_B4", "SR_B5", "SR_B6",
+                  "SR_B7", "NDVI"]
+LANDSAT8_ADV_BANDS = ["SR_B1", "SR_B2", "SR_B3", "SR_B4", "SR_B5", "SR_B6",
+                      "SR_B7", "NDVI", "NDWI", "NBR", "NDMI", "SWIRS", "SVVI",
+                      "brightness", "greenness", "wetness"]
 
 
 def get_landsat_raster_sampler(year):
-    if year < 1999:
-        return raster.RasterSampler(LANDSAT5_RASTER(year), LANDSAT5_BANDS)
-    elif year < 2018:
-        return raster.RasterSampler(LANDSAT8_ADV_RASTER(year), LANDSAT8_ADV_BANDS)
-    else:
-        return raster.RasterSampler(LANDSAT_RASTER(year), LANDSAT_BANDS)
+    raster_path = LANDSAT_RASTER(year)
+    bands = get_landsat_bands(year)
+    return raster.RasterSampler(raster_path, bands)
 
 
 def which_landsat(year):
@@ -65,6 +60,14 @@ def which_landsat(year):
         return 7
     else:
         return 8
+
+
+def get_landsat_bands(year):
+    landsat_num = which_landsat(year)
+    if landsat_num == 5 or landsat_num == 7:
+        return LANDSAT5_BANDS
+    else:
+        return LANDSAT8_BANDS
 
 
 def match_burn_raster(
