@@ -7,9 +7,10 @@ from fastai.tabular.all import save_pickle
 logger = get_logger(__file__)
 
 
-def create_and_save_training_data(gedi, start_year, end_year, kernel: int, delta, save: bool = True):
+def create_and_save_data_for_rf(gedi, start_year, end_year, save: bool = False, save_folder: str = None):
     # Match with 5 years of Landsat data from the past.
     gedi_match = gedi.copy()
+    kernel = 3
 
     counter = 0
     for year in range(start_year, end_year):
@@ -18,19 +19,20 @@ def create_and_save_training_data(gedi, start_year, end_year, kernel: int, delta
 
         logger.debug(f"Sampling raster.")
         gedi_match = gedi_raster_matching.sample_raster(
-            raster, gedi_match, kernel)
+            raster, gedi_match, kernel=kernel)
 
         print(f"Process columns.")
         gedi_match = process_spectral_column_names(gedi_match, year, kernel)
         counter += 1
 
-        if counter >= delta:
-            # First, save the picke file.
-            if save:
-                logger.debug(
-                    f"Save DF in a pickle file. Training data for year {year + 1}")
-                save_pickle(
-                    f"{DATA_PATH}/rf/gedi_match_{year + 1}.pkl", gedi_match)
+        # First, save the picke file.
+        if save:
+            logger.debug(
+                f"Save DF in a pickle file. Training data for year {year + 1}")
+            save_pickle(
+                f"{save_folder}/gedi_match_{year + 1}.pkl", gedi_match)
+
+        if counter >= 5:
             # Drop the oldest year columns.
             logger.debug(f"Dropping columns from {year-4}")
             spectral = gedi_raster_matching.get_landsat_bands(year-4)
