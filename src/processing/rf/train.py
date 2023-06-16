@@ -1,9 +1,7 @@
-from fastai.tabular.all import load_pickle, save_pickle
-from src.constants import DATA_PATH, USER_PATH
+from fastai.tabular.all import load_pickle, save_pickle, patch
+from src.constants import DATA_PATH
 from src.data import gedi_raster_matching
 from src.processing.rf import split_data
-from src.data import shape_processor
-import geopandas as gpd
 from fastai.tabular.all import *
 from sklearn.metrics import *
 from src.utils.logging_util import get_logger
@@ -29,10 +27,13 @@ def m_r2(m, xs, y): return r_squared(m.predict(xs), y)
 def train_rf(year, geometry, save: bool = True):
     # Get data for this year.
     logger.debug("Load training data from a pickle file.")
-    gedi = load_pickle(f"{DATA_PATH}/rf/gedi_match_{year}.pkl")
+    gedi = load_pickle(f"{DATA_PATH}/rf/unburned/gedi_match_{year}.pkl")
 
-    landsat_columns = [f"{x}_{y}" for y in range(year-5, year) for x in gedi_raster_matching.get_landsat_bands(
-        y)]
+    landsat_timeseries_legth = min(5, year - 1984)
+
+    landsat_columns = [f"{x}_{y}"
+                       for y in range(year - landsat_timeseries_legth, year)
+                       for x in gedi_raster_matching.get_landsat_bands(y)]
     columns_to_use = ['agbd', 'pft_class', 'elevation',
                       'slope', 'aspect', 'soil', 'gedi_year'] + landsat_columns
 
@@ -67,9 +68,10 @@ def train_rf(year, geometry, save: bool = True):
     logger.info(f"Year {year} - Test rmse: {rmse_test}; R^2: {r2_test}")
 
     if save:
-        logger.debug(f"Test rmse: {rmse_test}; R^2: {r2_test}")
-        save_pickle(f"{DATA_PATH}/rf/models/model_{year}.pkl", m)
-    return m
+        logger.debug(f"Save RF model for inference.")
+        save_pickle(f"{DATA_PATH}/rf/models_ver2/model_{year}.pkl", m)
+        logger.debug(f"Save TabularPandas object for inference.")
+        to.export(f"{DATA_PATH}/rf/models_ver2/to_{year}.pkl")
 
 
 def rf(xs, y, n_estimators=100, max_samples=0.85,
@@ -77,3 +79,14 @@ def rf(xs, y, n_estimators=100, max_samples=0.85,
     return RandomForestRegressor(n_jobs=-1, n_estimators=n_estimators,
                                  max_samples=max_samples, max_features=max_features,
                                  min_samples_leaf=min_samples_leaf, oob_score=True).fit(xs, y)
+
+
+@patch
+def export(self: TabularPandas, fname='export.pkl', pickle_protocol=2):
+    "Export the contents of `self` without the items"
+    old_to = self
+    self = self.new_empty()
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        pickle.dump(self, open(Path(fname), 'wb'), protocol=pickle_protocol)
+        self = old_to
