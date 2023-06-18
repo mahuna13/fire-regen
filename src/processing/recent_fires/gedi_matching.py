@@ -243,7 +243,7 @@ def get_closest_matches(df, distance):
 
 
 def get_severity(df, severity):
-    return df[df.burn_severity_median == severity]
+    return df[df.severity == severity]
 
 
 def add_date_since_burn_categories_granular(df: gpd.GeoDataFrame):

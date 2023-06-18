@@ -14,9 +14,9 @@ def plot_severity_for_distance(df: pd.DataFrame, col: str, lim: int = 700):
     palette = [sns.color_palette("rocket")[i] for i in [5, 3, 0]]
     fig, ax = plt.subplots(2, 2, figsize=(10, 10))
 
-    hue = 'burn_severity_median'
+    hue = 'severity'
     df = df.sort_values(hue, ascending=True)
-    df = df[df.burn_severity_median.isin([2, 3, 4])]
+    df = df[df.severity.isin([2, 3, 4])]
 
     sns.scatterplot(get_closest_matches(df, 5), x=col, y=f'{col}_after',
                     hue=hue, ax=ax[0][0], palette=palette)
@@ -126,6 +126,20 @@ def fit_linear_regression_per_severity(df, column):
         row_idx += 1
 
 
+def fit_linear_regression_per_severity_with_unburned(df, column):
+    fig, ax = plt.subplots(1, 4, figsize=(20, 5), sharex=True, sharey=True)
+
+    row_idx = 0
+    for severity in [0, 2, 3, 4]:
+        print(f'Linear regression fit for severity {severity}.')
+        fit_linear_regression(get_severity(df, severity), column, ax[row_idx])
+        row_idx += 1
+    ax[0].set_xlim((0, 1000))
+    ax[0].set_ylim((0, 1000))
+
+    return fig, ax
+
+
 def plot_rel_difference_per_severity(df, column):
     fig, ax = plt.subplots(1, 3, figsize=(15, 5), sharex=True)
 
@@ -144,7 +158,7 @@ def plot_rel_difference(df, column):
 
 
 def get_severity(df, severity):
-    return df[df.burn_severity_median == severity]
+    return df[df.severity == severity]
 
 
 def fit_distributions(df, column, rel=False):
@@ -199,10 +213,10 @@ def transform_pai_z_data(df, rel=False):
 
 def _unpack_pai_z(df, severity, date_since, rel):
     if rel:
-        pai_z = df[(df.burn_severity_median == severity) & (
+        pai_z = df[(df.severity == severity) & (
             df.date_since == date_since)].pai_z_delta_np_rel.to_numpy()
     else:
-        pai_z = df[(df.burn_severity_median == severity) & (
+        pai_z = df[(df.severity == severity) & (
             df.date_since == date_since)].pai_z_delta_np_diff.to_numpy()
 
     if pai_z.shape[0] == 0:
