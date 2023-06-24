@@ -1,5 +1,5 @@
 import ee
-from src.data import ee_utils
+from src.data.ee import ee_utils
 
 
 '''

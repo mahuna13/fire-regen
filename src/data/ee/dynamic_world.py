@@ -1,6 +1,6 @@
 import ee
 import shapely
-import src.data.ee_utils as ee_utils
+from src.data.ee import ee_utils
 
 
 def get_land_cover(start_date: str, end_date: str, polygon: shapely.Polygon) -> ee.Image:

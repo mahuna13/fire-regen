@@ -2,7 +2,7 @@ import ee
 import geemap
 import geemap.colormaps as cm
 import shapely
-import src.data.ee_utils as ee_utils
+import src.data.ee.ee_utils as ee_utils
 
 
 LAND_COVER_MAP = 'NLCD 2019 CONUS Land Cover'
