@@ -1,12 +1,32 @@
 import fiona
 import geopandas as gpd
 import pandas as pd
+import rasterio as rio
 
 from src.data import gedi_loader
-from src.data.raster import RasterSampler, Raster, reproject_raster
+from src.data.raster import RasterSampler, reproject_raster
 from src.utils.logging_util import get_logger
+from src.constants import DATA_PATH, USER_PATH
 
 logger = get_logger(__file__)
+
+
+class MTBSFirePerimetersDB:
+    def __init__(self, region: gpd.GeoDataFrame, crs=4326):
+        # MTBS dataset is in 4269 CRS.
+        perimeters = gpd.read_file(f"{DATA_PATH}/mtbs/mtbs_perims_DD.shp")
+
+        # Convert region to the same geometry.
+        region_4269 = region.to_crs(4269)
+
+        # Find fires that fall within the region.
+        fires_within_region = perimeters.sjoin(
+            region_4269, how="inner", predicate="within")
+        fires_within_region.drop(columns="index_right", inplace=True)
+
+        # Convert to a desired crs
+        self.perimeters = fires_within_region.to_crs(crs)
+        self.perimeters["Ig_Date"] = pd.to_datetime(self.perimeters.Ig_Date)
 
 
 class FirePerimetersDB:
@@ -52,6 +72,14 @@ class FirePerimeters:
         self.perimeters.drop(columns="index_right", inplace=True)
         return self
 
+    def filter_for_fires_over_1000_acres(self):
+        # Shape area is in meter squared, so we need to convert to acres.
+        self.perimeters["shape_area_acres"] = \
+            self.perimeters.Shape_Area / 4046.8564224
+
+        self.perimeters = \
+            self.perimeters[self.perimeters.shape_area_acres > 1000]
+
     def count(self):
         return self.perimeters.shape[0]
 
@@ -60,6 +88,57 @@ class FirePerimeters:
 
     def get_fire(self, fire_name: str):
         return Fire(self.perimeters[self.perimeters.FIRE_NAME == fire_name])
+
+
+class MTBSFire:
+    def __init__(self, fire_info: gpd.GeoDataFrame):
+        self.fire = fire_info
+
+        # Create a gdf to store the area around the fire, called fire buffer.
+        fire_geometry = self.fire.geometry.iloc[0]
+        self.fire_buffer = gpd.GeoSeries([fire_geometry.buffer(
+            1000).symmetric_difference(fire_geometry)])
+
+    def get_buffer(self, width: int, exclusion_zone: int = 100):
+        # convert to projected CRS to be able to specify distances in meters.
+        fire_projected = self.fire.to_crs(epsg=3310)
+
+        fire_geom = fire_projected.geometry.iloc[0]
+
+        exclude = fire_geom.buffer(
+            exclusion_zone).union(fire_geom)
+        buffer = exclude.buffer(width).symmetric_difference(exclude)
+
+        return gpd.GeoDataFrame(geometry=gpd.GeoSeries([buffer]), crs=3310) \
+            .to_crs(self.fire.crs)
+
+    def overlay_fire_map(self, gdf: gpd.GeoDataFrame):
+        self.fire.overlay(gdf, how="union").plot(cmap='tab20b')
+
+    def load_gedi(self, load_buffer: bool = False):
+        ''' Loads GEDI shots stored for the fire from postgress database. '''
+        self.gedi = gedi_loader.get_gedi_shots(self.fire.geometry)
+
+        if load_buffer:
+            self.gedi_buffer = gedi_loader.get_gedi_shots(
+                self.fire_buffer.geometry)
+
+    def get(self):
+        return self.fire
+
+    def get_gedi_before_fire(self):
+        return self.gedi[self.gedi.absolute_time < self.alarm_date]
+
+    def get_gedi_buffer_before_fire(self):
+        return self.gedi_buffer[
+            self.gedi_buffer.absolute_time < self.alarm_date]
+
+    def get_gedi_after_fire(self):
+        return self.gedi[self.gedi.absolute_time > self.cont_date]
+
+    def get_gedi_buffer_after_fire(self):
+        return self.gedi_buffer[
+            self.gedi_buffer.absolute_time > self.cont_date]
 
 
 class Fire:
@@ -113,6 +192,38 @@ class Fire:
     def get_gedi_buffer_after_fire(self):
         return self.gedi_buffer[
             self.gedi_buffer.absolute_time > self.cont_date]
+
+
+class Raster:
+    def __init__(self, raster_file_path: str, bands: dict[str, int]):
+        self.raster = self.read_raster(raster_file_path)
+        self.bands = bands
+
+    def read_raster(self, directory: str) -> rio.DatasetReader:
+        '''
+        Open raster as array file and evaluate if is in right projection
+        compared with GEDI data (ESPG:4326).
+        '''
+        raster = rio.open(directory)
+        crs = str(raster.crs)
+        if crs == 'EPSG:4326':
+            return raster
+        else:
+            raise Warning("Your raster file is not in crs 'EPSG:4326'")
+
+    def get_band_index(self, band_name: str) -> int:
+        return self.bands[band_name]
+
+    def transform_geo_to_xy_coords(self, geo_coords: list[tuple]):
+        transformer = rio.transform.AffineTransformer(self.raster.transform)
+        return [transformer.rowcol(x[0], x[1]) for x in geo_coords]
+
+    def transform_xy_to_geo_coords(self, xy_coords: list[tuple]):
+        transformer = rio.transform.AffineTransformer(self.raster.transform)
+        return [transformer.xy(x[0], x[1]) for x in xy_coords]
+
+    def sample(self, xy_coords: list[tuple]):
+        return self.raster.sample(xy_coords)
 
 
 class FireRastersDB:
