@@ -20,14 +20,6 @@ def LANDSAT_RASTER(year):
     return f"{DATA_PATH}/rasters/LANDSAT/{year}/landsat{landsat_num}_{year}.tif"
 
 
-def LANDSAT5_RASTER(year):
-    return f"{DATA_PATH}/rasters/LANDSAT/LANDSAT5/{year}/landsat5_{year}.tif"
-
-
-def LANDSAT8_ADV_RASTER(year):
-    return f"{DATA_PATH}/rasters/LANDSAT/{year}/landsat8_{year}.tif"
-
-
 def DYNAMIC_WORLD_RASTER(year):
     return f"{DATA_PATH}/rasters/DYNAMIC_WORLD/dynamic_world_{year}.tif"
 
@@ -42,9 +34,6 @@ TERRAIN_BANDS = ['aspect', 'elevation', 'slope', 'soil']
 LANDSAT5_BANDS = ['SR_B1', 'SR_B2', 'SR_B3', 'SR_B4', 'SR_B5', 'SR_B7', 'NDVI']
 LANDSAT8_BANDS = ["SR_B1", "SR_B2", "SR_B3", "SR_B4", "SR_B5", "SR_B6",
                   "SR_B7", "NDVI"]
-LANDSAT8_ADV_BANDS = ["SR_B1", "SR_B2", "SR_B3", "SR_B4", "SR_B5", "SR_B6",
-                      "SR_B7", "NDVI", "NDWI", "NBR", "NDMI", "SWIRS", "SVVI",
-                      "brightness", "greenness", "wetness"]
 
 
 def get_landsat_raster_sampler(year):
