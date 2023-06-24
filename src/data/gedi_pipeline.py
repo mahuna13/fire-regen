@@ -22,14 +22,44 @@ def add_time_since_burn_categories(df: gpd.GeoDataFrame):
     return df.join(c.unstack().add_suffix('_cat'))
 
 
+def add_time_since_burn_categories_3(df: gpd.GeoDataFrame):
+    c = pd.cut(
+        df[['time_since_burn']].stack(),
+        range(0, 37, 3),
+        labels=['burn_3', 'burn_6', 'burn_9',
+                "burn_12", "burn_15", "burn_18", "burn_21",
+                "burn_24", "burn_27", "burn_30", "burn_33", "burn_36"]
+    )
+    return df.join(c.unstack().add_suffix('_cat_3'))
+
+
 def add_time_since_burn_categories_5(df: gpd.GeoDataFrame):
     c = pd.cut(
         df[['time_since_burn']].stack(),
-        [1, 6, 11, 16, 21, 26, 31],
+        range(0, 37, 5),
         labels=['burn_5', 'burn_10', 'burn_15',
-                "burn_20", "burn_25", "burn_30"]
+                "burn_20", "burn_25", "burn_30", "burn_35"]
     )
-    return df.join(c.unstack().add_suffix('_cat'))
+    return df.join(c.unstack().add_suffix('_cat_5'))
+
+
+def add_time_since_burn_categories_7(df: gpd.GeoDataFrame):
+    c = pd.cut(
+        df[['time_since_burn']].stack(),
+        range(0, 37, 7),
+        labels=['burn_7', 'burn_14', 'burn_21',
+                "burn_28", "burn_35"]
+    )
+    return df.join(c.unstack().add_suffix('_cat_7'))
+
+
+def add_time_since_burn_categories_10(df: gpd.GeoDataFrame):
+    c = pd.cut(
+        df[['time_since_burn']].stack(),
+        range(0, 41, 10),
+        labels=['burn_10', 'burn_20', "burn_30", "burn_40"]
+    )
+    return df.join(c.unstack().add_suffix('_cat_10'))
 
 
 def print_burn_stats(df):
@@ -47,12 +77,24 @@ def print_burn_stats(df):
 
 
 def get_severity(df, severity):
-    return df[df.burn_severity_median == severity]
+    return df[df.severity == severity]
 
 
 '''
 Stage 9 of the GEDI pipeline - Filter Terrain.
 '''
+
+
+def load_stage_9_B(kernel: int):
+    gedi_burned = get_gedi_as_gdp(
+        f"{GEDI_PATH}/sierras_gedi_shots_stage_9_{kernel}x{kernel}_burned_B.pkl",
+        pickle=True)
+
+    gedi_unburned = get_gedi_as_gdp(
+        f"{GEDI_PATH}/sierras_gedi_shots_stage_9_{kernel}x{kernel}_unburned_B.pkl",
+        pickle=True)
+
+    return gedi_burned, gedi_unburned
 
 
 def load_stage_9(kernel: int):
@@ -63,6 +105,55 @@ def load_stage_9(kernel: int):
     gedi_unburned = get_gedi_as_gdp(
         f"{GEDI_PATH}/sierras_gedi_shots_stage_9_{kernel}x{kernel}_unburned.pkl",
         pickle=True)
+
+    return gedi_burned, gedi_unburned
+
+
+def stage_9_filter_terrain_l4a_sierras_B(kernel: int, save: bool = True):
+    gedi_burned, gedi_unburned = load_stage_8_B(kernel)
+
+    # First, match soil, so that all the pixels in the kernel have the same
+    # soil.
+    gedi_burned = gedi_burned[gedi_burned.soil_std == 0]
+    gedi_unburned = gedi_unburned[gedi_unburned.soil_std == 0]
+
+    columns_to_drop = [f"soil_{kernel}x{kernel}",
+                       f"aspect_{kernel}x{kernel}",
+                       f"elevation_{kernel}x{kernel}",
+                       f"slope_{kernel}x{kernel}",
+                       "soil_mean",
+                       "aspect_median",
+                       "elevation_median",
+                       "slope_median",
+                       "soil_std",
+                       "aspect_std",
+                       "elevation_std",
+                       "slope_std"]
+
+    columns_to_rename = {"soil_median": "soil",
+                         "aspect_mean": "aspect",
+                         "slope_mean": "slope",
+                         "elevation_mean": "elevation"}
+
+    gedi_burned.drop(columns=columns_to_drop, inplace=True)
+    gedi_unburned.drop(columns=columns_to_drop, inplace=True)
+    gedi_burned.rename(columns=columns_to_rename, inplace=True)
+    gedi_unburned.rename(columns=columns_to_rename, inplace=True)
+
+    if save:
+        logger.debug(
+            f"Saving stage 9-B processed burned shots as pkl, \
+            for kernel {kernel}.")
+        save_pickle(
+            f"{GEDI_PATH}/sierras_gedi_shots_stage_9_{kernel}x{kernel}_burned_B.pkl",
+            gedi_burned)
+
+        logger.debug(
+            f"Saving stage 9-B processed unburned shots as pkl, \
+            for kernel {kernel}.")
+        save_pickle(
+            f"{GEDI_PATH}/sierras_gedi_shots_stage_9_{kernel}x{kernel}_unburned_B.pkl",
+            gedi_unburned)
 
     return gedi_burned, gedi_unburned
 
@@ -135,6 +226,18 @@ def load_stage_8(kernel: int):
     return gedi_burned, gedi_unburned
 
 
+def load_stage_8_B(kernel: int):
+    gedi_burned = get_gedi_as_gdp(
+        f"{GEDI_PATH}/sierras_gedi_shots_stage_8_{kernel}x{kernel}_burned_B.pkl",
+        pickle=True)
+
+    gedi_unburned = get_gedi_as_gdp(
+        f"{GEDI_PATH}/sierras_gedi_shots_stage_8_{kernel}x{kernel}_unburned_B.pkl",
+        pickle=True)
+
+    return gedi_burned, gedi_unburned
+
+
 def stage_8_match_terrain_l4a_sierras(kernel: int, save: bool = True):
     gedi_burned, gedi_unburned = load_stage_7(kernel)
 
@@ -158,9 +261,41 @@ def stage_8_match_terrain_l4a_sierras(kernel: int, save: bool = True):
     return gedi_burned, gedi_unburned
 
 
+def stage_8_match_terrain_l4a_sierras_B(kernel: int, save: bool = True):
+    gedi_burned, gedi_unburned = load_stage_7_B(kernel)
+
+    gedi_burned = gedi_raster_matching.match_terrain(gedi_burned, kernel)
+    gedi_unburned = gedi_raster_matching.match_terrain(gedi_unburned, kernel)
+    if save:
+        logger.debug(
+            f"Saving stage 8 processed burned shots as pkl, \
+            for kernel {kernel}.")
+        save_pickle(
+            f"{GEDI_PATH}/sierras_gedi_shots_stage_8_{kernel}x{kernel}_burned_B.pkl",
+            gedi_burned)
+
+        logger.debug(
+            f"Saving stage 8 processed unburned shots as pkl, \
+            for kernel {kernel}.")
+        save_pickle(
+            f"{GEDI_PATH}/sierras_gedi_shots_stage_8_{kernel}x{kernel}_unburned_B.pkl",
+            gedi_unburned)
+
+    return gedi_burned, gedi_unburned
+
+
 '''
 Stage 7 of the GEDI pipeline - Filter Land Cover.
 '''
+
+
+def load_stage_7_B(kernel: int):
+    gedi_burned, _ = load_stage_7(kernel)
+
+    # In this case, unburned has not be filtered based on land cover.
+    _, gedi_unburned = load_stage_5(kernel)
+
+    return gedi_burned, gedi_unburned
 
 
 def load_stage_7(kernel: int):
