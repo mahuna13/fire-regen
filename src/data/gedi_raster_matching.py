@@ -10,35 +10,35 @@ from src.utils.logging_util import get_logger
 
 logger = get_logger(__file__)
 
-BURN_DATA_RASTER = '/maps/fire-regen/data/rasters/burn_data_sierras.tif'
-LAND_COVER_RASTER = '/maps/fire-regen/data/rasters/land_cover_sierras.tif'
-TERRAIN_RASTER = '/maps/fire-regen/data/rasters/TERRAIN/terrain_stack.tif'
+BURN_DATA_RASTER = f"{DATA_PATH}/rasters/burn_data_sierras.tif"
+LAND_COVER_RASTER = f"{DATA_PATH}/rasters/land_cover_sierras.tif"
+TERRAIN_RASTER = f"{DATA_PATH}/rasters/TERRAIN/terrain_stack.tif"
 
 
 def LANDSAT_RASTER(year):
     landsat_num = which_landsat(year)
-    return f"/maps/fire-regen/data/rasters/LANDSAT/{year}/landsat{landsat_num}_{year}.tif"
+    return f"{DATA_PATH}/rasters/LANDSAT/{year}/landsat{landsat_num}_{year}.tif"
 
 
 def LANDSAT5_RASTER(year):
-    return f"/maps/fire-regen/data/rasters/LANDSAT/LANDSAT5/{year}/landsat5_{year}.tif"
+    return f"{DATA_PATH}/rasters/LANDSAT/LANDSAT5/{year}/landsat5_{year}.tif"
 
 
 def LANDSAT8_ADV_RASTER(year):
-    return f"/maps/fire-regen/data/rasters/LANDSAT/{year}/landsat8_{year}.tif"
+    return f"{DATA_PATH}/rasters/LANDSAT/{year}/landsat8_{year}.tif"
 
 
 def DYNAMIC_WORLD_RASTER(year):
-    return f"/maps/fire-regen/data/rasters/DYNAMIC_WORLD/dynamic_world_{year}.tif"
+    return f"{DATA_PATH}/rasters/DYNAMIC_WORLD/dynamic_world_{year}.tif"
 
 
 def LCSM_RASTER(year):
-    return f"/maps/fire-regen/data/rasters/lcsm/lcms_{year}.tif"
+    return f"{DATA_PATH}/rasters/lcsm/lcms_{year}.tif"
 
 
 BURN_RASTER_BANDS = ['burn_severity', 'burn_year', 'burn_counts']
 LAND_COVER_BANDS = ['land_cover']
-TERRAIN_BANDS = ['elevation', 'slope', 'aspect', 'soil']
+TERRAIN_BANDS = ['aspect', 'elevation', 'slope', 'soil']
 LANDSAT5_BANDS = ['SR_B1', 'SR_B2', 'SR_B3', 'SR_B4', 'SR_B5', 'SR_B7', 'NDVI']
 LANDSAT8_BANDS = ["SR_B1", "SR_B2", "SR_B3", "SR_B4", "SR_B5", "SR_B6",
                   "SR_B7", "NDVI"]
