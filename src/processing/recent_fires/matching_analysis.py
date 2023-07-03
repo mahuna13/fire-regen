@@ -89,6 +89,24 @@ def plot_error_for_distances(df, column):
         row_idx += 1
 
 
+def fit_linear_regression_no_plot(df, column1, column2):
+    before_values = df[column1].values
+    after_values = df[column2].values
+
+    fit_best = LinearRegression().fit(np.reshape(
+        before_values, (df.shape[0], 1)), after_values)
+    best_score = fit_best.score(np.reshape(before_values,
+                                           (df.shape[0], 1)), after_values)
+
+    print(
+        f'Best Linear regression coefficient is {fit_best.coef_}. \
+        R squared is : {best_score}.')
+
+    print(
+        f'The error for coeff = 1 is: {r2_score(before_values, after_values)}.'
+    )
+
+
 def fit_linear_regression(df, column, ax=None):
     before_values = df[column].values
     after_values = df[f'{column}_after'].values

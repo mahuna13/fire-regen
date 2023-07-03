@@ -44,6 +44,7 @@ def train_rf(year, geometry, save: bool = True, log: bool = False):
 
     dep_var = 'agbd'
     if log:
+        logger.debug("Optimizing for log")
         gedi_prepared = gedi_prepared[gedi_prepared.agbd != 0]
         gedi_prepared[dep_var] = np.log(gedi_prepared[dep_var])
 
@@ -82,6 +83,64 @@ def train_rf(year, geometry, save: bool = True, log: bool = False):
             save_pickle(f"{DATA_PATH}/rf/models/model_{year}.pkl", m)
             logger.debug(f"Save TabularPandas object for inference.")
             to.export(f"{DATA_PATH}/rf/models/to_{year}.pkl")
+
+    return r2_train, m.oob_score_, r2_test, rmse_train, rmse_test
+
+
+def train_rf_l2b(year, geometry, save: bool = True, log: bool = False):
+    # Get data for this year.
+    logger.debug("Load training data from a pickle file.")
+    gedi = load_pickle(f"{DATA_PATH}/rf/unburned_l2b/gedi_match_{year}.pkl")
+
+    landsat_timeseries_legth = min(5, year - 1984)
+
+    landsat_columns = [f"{x}_{y}"
+                       for y in range(year - landsat_timeseries_legth, year)
+                       for x in gedi_raster_matching.get_landsat_bands(y)]
+    columns_to_use = ['pai', 'pft_class', 'elevation',
+                      'slope', 'aspect', 'soil', 'gedi_year'] + landsat_columns
+
+    # Split data into training and validation.
+    logger.debug("Split data into training and testing.")
+    gedi_prepared = split_data.spatial_split_train_and_test_data(
+        gedi, geometry, 5000)
+
+    dep_var = 'pai'
+    if log:
+        logger.debug("Optimizing for log")
+        gedi_prepared = gedi_prepared[gedi_prepared.pai > 0]
+        gedi_prepared[dep_var] = np.log(gedi_prepared[dep_var])
+
+    logger.debug("Prepare data for training.")
+    df = gedi_prepared[columns_to_use]
+    procs = [Categorify, FillMissing]
+
+    cont, cat = cont_cat_split(df, 1, dep_var=dep_var)
+    splits = IndexSplitter(
+        gedi_prepared[gedi_prepared.dataset == "test"].index)((range_of(df)))
+    to = TabularPandas(df, procs, cat, cont, y_names=dep_var, splits=splits)
+
+    xs, y = to.train.xs, to.train.y
+    valid_xs, valid_y = to.valid.xs, to.valid.y
+
+    logger.debug("Start model training.")
+    m = rf(xs, y)
+    logger.debug("Training complete.")
+
+    rmse_train = m_rmse(m, xs, y)
+    rmse_test = m_rmse(m, valid_xs, valid_y)
+    r2_train = m_r2(m, xs, y)
+    r2_test = m_r2(m, valid_xs, valid_y)
+
+    logger.info(f"Year {year} - Training rmse: {rmse_train}; R^2: {r2_train}")
+    logger.info(f"Year {year} - Validation error: {m.oob_score_}")
+    logger.info(f"Year {year} - Test rmse: {rmse_test}; R^2: {r2_test}")
+
+    if save:
+        logger.debug(f"Save RF model for inference.")
+        save_pickle(f"{DATA_PATH}/rf/models_l2b/model_{year}.pkl", m)
+        logger.debug(f"Save TabularPandas object for inference.")
+        to.export(f"{DATA_PATH}/rf/models_l2b/to_{year}.pkl")
 
     return r2_train, m.oob_score_, r2_test, rmse_train, rmse_test
 

@@ -34,7 +34,7 @@ def match_with_nearest_shot_from_terrain_cluster(
     within_buffer_clustered = pd.merge(
         clustered_df, within_buffer, how='inner')
 
-    print('Enter clusteing knn')
+    print('Enter clustering knn')
     processed = []
     # For each cluster, find the closest.
     for cluster_idx in range(n_clusters):

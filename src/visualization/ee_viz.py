@@ -38,13 +38,17 @@ def viz_burn_severity(img: ee.Image, polygon: shapely.Polygon,
                          zoom=9, basemap=basemap, height=1500)
 
         # Plot the perimeter of area of interest.
-    perimeter_vis = {'color': 'ff5722', 'fillColor': 'ff8a50', 'width': 2,
-                     'opacity': 0.5}
+    perimeter_vis = {'color': 'blue', 'fillColor': 'blue', 'width': 6,
+                     'opacity': 0.3}
     map.addLayer(region, perimeter_vis, 'Region of interest')
 
     for band, name in zip(bands, band_names):
-        band_min = img_stats['min'][band]
-        band_max = img_stats['max'][band]
+        if band == "last_burn_severity":
+            band_min = 1
+            band_max = 4
+        else:
+            band_min = img_stats['min'][band]
+            band_max = img_stats['max'][band]
         band_vis = {'bands': band, 'palette': cm.palettes.inferno_r,
                     'min': band_min, 'max': band_max}
         map.addLayer(img.clip(region), band_vis, name)

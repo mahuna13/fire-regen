@@ -16,7 +16,8 @@ def evaluate_control(
     buffer_size: int,
     num_samples: int,
     func_to_eval: Callable,
-    debug: bool = False
+    debug: bool = False,
+    crs: int = 3310
 ):
     # Assumes everything is converted to 3310 projection.
     fire_sizes = pd.read_csv(
@@ -30,10 +31,10 @@ def evaluate_control(
         if debug:
             return evaluate_control_on_single_fake_fire(
                 fake_fire_size, gedi, buffer_size, num_samples, func_to_eval,
-                debug)
+                crs, debug)
 
         x, y, z = evaluate_control_on_single_fake_fire(
-            fake_fire_size, gedi, buffer_size, num_samples, func_to_eval)
+            fake_fire_size, gedi, buffer_size, num_samples, func_to_eval, crs)
 
         vals.append(x)
         vals_controls_mean.append(y)
@@ -55,7 +56,8 @@ def evaluate_control_on_single_fake_fire(
     buffer_size: int,
     num_samples: int,
     func_to_eval: Callable,
-    debug: bool = False
+    crs,
+    debug: bool = False,
 ):
     # Assumes everything is converted to 3310 projection.
 
@@ -64,7 +66,7 @@ def evaluate_control_on_single_fake_fire(
     fake_fire_circle = fake_fire_center.buffer(fake_fire_radius)
 
     fake_fire = fire_perimeters.Fire(gpd.GeoDataFrame(geometry=gpd.GeoSeries(
-        fake_fire_circle), columns=['ALARM_DATE', 'CONT_DATE'], crs=3310))
+        fake_fire_circle), columns=['ALARM_DATE', 'CONT_DATE'], crs=crs))
 
     vals_with_controls = func_to_eval(
         fake_fire, gedi, buffer_size, num_samples)
