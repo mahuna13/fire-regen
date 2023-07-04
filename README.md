@@ -37,7 +37,7 @@ This project uses the following data sources:
 |
 ├── notebooks          <- Jupyter notebooks.
 │   ├── exploratory    <- Notebooks for initial exploration. Lots of half-baked code lives here, with lots of analysis that didn't make their way into the report.
-│
+│   ├── analysis       <- Notebooks that contain the main project analysis.
 │
 ├── requirements.txt   <- File containing all the required python packages. Use pip install -r requirements.txt to install them.
 │
@@ -57,4 +57,29 @@ This project uses the following data sources:
    ├── utils           <- Basic helper functions.
    └── visualization  <- Functions to plot and visualize data.
 ```
+
+## Code Guide
+Here is the run-down of main files and notebooks that are relevant for each analysis:
+
+### Data download and pipelines:
+* GEDI data:
+  *  Get data from postgres database: src/data/gedi_loader.py
+  *  Filter GEDI data for burn severity, land cover and terrain: src/data/gedi_pipeline.py
+* Earth Engine Raster data:
+  *  Data definitions: src/ee
+  *  Download data as tifs: notebooks/data/DownloadRasters.ipynb
+* Fuse GEDI and raster data together:
+  *  Utility methods: src/data/raster.py
+  *  Actual fusing: src/data/gedi_raster_matching.py
+ 
+### Recovery Analysis
+* NDVI (space-for-time + time series) and AGBD analysis: notebooks/analysis/recovery
+
+### Evaluation of counterfactuals
+* Code that create fake "fires" on unburned areas + definitions of multiple counterfactual algorithms: src/processing/control
+* Notebook that contains some of the evaluation runs: notebooks/analysis/controls/ControlEvaluation.ipynb
+
+### Random Forests for predicting biomass from Landsat and Topography
+* Data processing, data splits and training logic: src/processing/rf
+* Actual training runs: notebooks/analysis/rf
 
