@@ -8,7 +8,7 @@
 
 ## Project Summary
 
-We use GEDI and Landsat data to look at long-term post-fire recovery of forests in Sierra Nevada. Look at the full report for more detail.
+We use GEDI and Landsat data to look at long-term post-fire recovery of forests in Sierra Nevada. The project report containing all the background information and the summary of the analysis performed can be found at in the reports folder.
 
 ## Data availability
 This project uses the following data sources:
@@ -44,15 +44,17 @@ This project uses the following data sources:
 ├── setup.py           <- makes project pip installable (pip install -e .) so src can be imported
 ├── data               <- This directory mostly contains relevant shape files we used for California and Sierra Nevada. Does not contain large data like GEDI.
 ├── reports/figures    <- Directory that contains our results as figures.
-└── fire-regen         <- Python source code.
-   ├── __init__.py    <- Makes fire-regen a Python module
+└── src                <- Python source code.
+   ├── __init__.py     <- Makes fire-regen a Python module
    │
-   ├── data           <- Functions to download, process and analyze data.
-   │
+   ├── data           <- Functions to download and process data. This includes logic for matching GEDI shots to raster data.
+      ├── ee               <- Functions to fetch Google Earth Engine data.
+   ├── processing     <- Functions to do main analysis.
+      ├── control          <- Framework for running placebo tests on controls.
+      ├── recent_fires     <- Logic to find coincident GEDI shots - i.e. shots that are in close proximity to each other.
+      ├── regen            <- Uses random forest counterfactual to generate AGBD control values for all fires.
+      ├── rf               <- Random Forest training, and splitting data to avoid spatial auto-correlation.
+   ├── utils           <- Basic helper functions.
    └── visualization  <- Functions to plot and visualize data.
 ```
-
-## General Project Guide
-
-The project report containing all the background information and the summary of the analysis performed can be found at `reports/*`.
 
