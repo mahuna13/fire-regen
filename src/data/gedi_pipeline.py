@@ -602,6 +602,11 @@ Stage 2 of the GEDI pipeline - Basic data cleanup:
 '''
 
 
+def load_stage_2():
+    return get_gedi_as_gdp(
+        f"{GEDI_PATH}/sierras_gedi_shots_stage_2.pkl", pickle=True)
+
+
 def stage_2_basic_processing_of_l4a_sierras_data(save: bool = True):
     gedi = get_gedi_as_gdp(f"{DATA_PATH}/sierras_gedi_shots.csv")
     gedi = initial_l4a_shot_processing(gedi)
