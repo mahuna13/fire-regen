@@ -107,7 +107,7 @@ def fit_linear_regression_no_plot(df, column1, column2):
     )
 
 
-def fit_linear_regression(df, column, ax=None):
+def fit_linear_regression(df, column, ax=None, color="blue"):
     before_values = df[column].values
     after_values = df[f'{column}_after'].values
 
@@ -128,29 +128,42 @@ def fit_linear_regression(df, column, ax=None):
         fig, ax = plt.subplots(1, 1, figsize=(
             10, 10), sharex=True, sharey=True)
 
-    sns.scatterplot(df, x=column, y=f'{column}_after', ax=ax)
+    sns.scatterplot(df, x=column, y=f'{column}_after', ax=ax, color=color)
     sns.lineplot(x=before_values, y=fit_best.predict(np.reshape(
-        before_values, (df.shape[0], 1))), color='green', ax=ax)
-    sns.lineplot(x=before_values, y=before_values, color='red', ax=ax)
+        before_values, (df.shape[0], 1))), color='black', ax=ax)
+    sns.lineplot(x=range(10000), y=range(10000),
+                 color='gray', ax=ax, linestyle='--')
 
 
 def fit_linear_regression_per_severity(df, column):
+    # palette = sns.color_palette("Set2")
+    palette = [sns.color_palette("rocket")[i] for i in [5, 3, 0]]
     fig, ax = plt.subplots(1, 3, figsize=(15, 5), sharex=True, sharey=True)
 
     row_idx = 0
     for severity in [2, 3, 4]:
         print(f'Linear regression fit for severity {severity}.')
-        fit_linear_regression(get_severity(df, severity), column, ax[row_idx])
+        fit_linear_regression(get_severity(df, severity),
+                              column, ax[row_idx], palette[severity-2])
         row_idx += 1
+    ax[0].set_xlim((0, 1000))
+    ax[0].set_ylim((0, 1000))
 
 
 def fit_linear_regression_per_severity_with_unburned(df, column):
+    palette = [sns.color_palette("rocket")[i] for i in [5, 3, 0]]
+    # palette = sns.color_palette("Set2")
     fig, ax = plt.subplots(1, 4, figsize=(20, 5), sharex=True, sharey=True)
 
     row_idx = 0
     for severity in [0, 2, 3, 4]:
         print(f'Linear regression fit for severity {severity}.')
-        fit_linear_regression(get_severity(df, severity), column, ax[row_idx])
+        if severity == 0:
+            color = "gray"
+        else:
+            color = palette[severity - 2]
+        fit_linear_regression(get_severity(df, severity),
+                              column, ax[row_idx], color)
         row_idx += 1
     ax[0].set_xlim((0, 1000))
     ax[0].set_ylim((0, 1000))
