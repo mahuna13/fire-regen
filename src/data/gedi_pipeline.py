@@ -85,7 +85,7 @@ Stage 11 - match with dynamic world.
 '''
 
 
-def load_stage_11(kernel: int):
+def load_stage_11():
     gedi_burned = get_gedi_as_gdp("sierras_gedi_combined_stage_11_burned.pkl")
 
     gedi_unburned = get_gedi_as_gdp(
@@ -95,7 +95,7 @@ def load_stage_11(kernel: int):
 
 
 def stage_11_match_with_dynamic_world(save: bool = True):
-    gedi_burned, gedi_unburned = load_stage_9(2)
+    gedi_burned, gedi_unburned = load_stage_10(2)
 
     gedi_burned = _match_gedi_with_dynamic_world(gedi_burned)
     gedi_unburned = _match_gedi_with_dynamic_world(gedi_unburned)
@@ -109,7 +109,7 @@ def stage_11_match_with_dynamic_world(save: bool = True):
     return gedi_burned, gedi_unburned
 
 
-def _match_gedi_with_dynamic_world(gedi_df: gpd.GeoDataframe):
+def _match_gedi_with_dynamic_world(gedi_df: gpd.GeoDataFrame):
     gedi_df_combined_years = []
     for year in range(2019, 2023):
         gedi_for_year = gedi_df[gedi_df.gedi_year == year]
@@ -158,7 +158,7 @@ def stage_10_match_with_NDVI(kernel: int, save: bool = True):
     return gedi_burned, gedi_unburned
 
 
-def _match_gedi_with_landsat(gedi_df: gpd.GeoDataframe, kernel: int):
+def _match_gedi_with_landsat(gedi_df: gpd.GeoDataFrame, kernel: int):
     gedi_df_combined_years = []
     for year in range(2019, 2023):
         if year == 2022:
