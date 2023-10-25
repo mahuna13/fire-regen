@@ -81,18 +81,63 @@ def get_severity(df, severity):
 
 
 '''
+Stage 11 - match with dynamic world.
+'''
+
+
+def load_stage_11(kernel: int):
+    gedi_burned = get_gedi_as_gdp("sierras_gedi_combined_stage_11_burned.pkl")
+
+    gedi_unburned = get_gedi_as_gdp(
+        "sierras_gedi_combined_stage_11_unburned.pkl")
+
+    return gedi_burned, gedi_unburned
+
+
+def stage_11_match_with_dynamic_world(save: bool = True):
+    gedi_burned, gedi_unburned = load_stage_9(2)
+
+    gedi_burned = _match_gedi_with_dynamic_world(gedi_burned)
+    gedi_unburned = _match_gedi_with_dynamic_world(gedi_unburned)
+
+    if save:
+        _save_df_as_pickle("sierras_gedi_combined_stage_11_burned.pkl",
+                           gedi_burned)
+        _save_df_as_pickle("sierras_gedi_combined_stage_11_unburned.pkl",
+                           gedi_unburned)
+
+    return gedi_burned, gedi_unburned
+
+
+def _match_gedi_with_dynamic_world(gedi_df: gpd.GeoDataframe):
+    gedi_df_combined_years = []
+    for year in range(2019, 2023):
+        gedi_for_year = gedi_df[gedi_df.gedi_year == year]
+
+        logger.debug(f'Match with Dynamic World for year {year - 1}')
+        raster = gedi_raster_matching.get_dw_raster_sampler(year - 1)
+
+        # We match with a 3x3 kernel because DW resolution is 10m.
+        gedi_for_year = gedi_raster_matching.sample_raster(raster,
+                                                           gedi_for_year,
+                                                           3)
+
+        gedi_df_combined_years.append(gedi_for_year)
+
+    return pd.concat(gedi_df_combined_years)
+
+
+'''
 Stage 10 - join with NDVI.
 '''
 
 
 def load_stage_10(kernel: int):
     gedi_burned = get_gedi_as_gdp(
-        f"{GEDI_PATH}/sierras_gedi_combined_stage_10_{kernel}x{kernel}_burned.pkl",
-        pickle=True)
+        f"sierras_gedi_combined_stage_10_{kernel}x{kernel}_burned.pkl")
 
     gedi_unburned = get_gedi_as_gdp(
-        f"{GEDI_PATH}/sierras_gedi_combined_stage_10_{kernel}x{kernel}_unburned.pkl",
-        pickle=True)
+        f"sierras_gedi_combined_stage_10_{kernel}x{kernel}_unburned.pkl")
 
     return gedi_burned, gedi_unburned
 
@@ -100,140 +145,51 @@ def load_stage_10(kernel: int):
 def stage_10_match_with_NDVI(kernel: int, save: bool = True):
     gedi_burned, gedi_unburned = load_stage_9(kernel)
 
-    gedi_2019 = gedi_burned[gedi_burned.gedi_year == 2019]
-    gedi_2020 = gedi_burned[gedi_burned.gedi_year == 2020]
-    gedi_2021 = gedi_burned[gedi_burned.gedi_year == 2021]
-    gedi_2022 = gedi_burned[(gedi_burned.gedi_year == 2022)
-                            | (gedi_burned.gedi_year == 2023)]
-
-    logger.debug('Match 2019')
-    raster = gedi_raster_matching.get_landsat_raster_sampler(2019)
-    gedi_2019 = gedi_raster_matching.sample_raster(raster, gedi_2019, kernel)
-    logger.debug('Match 2020')
-    raster = gedi_raster_matching.get_landsat_raster_sampler(2020)
-    gedi_2020 = gedi_raster_matching.sample_raster(raster, gedi_2020, kernel)
-    logger.debug('Match 2021')
-    raster = gedi_raster_matching.get_landsat_raster_sampler(2021)
-    gedi_2021 = gedi_raster_matching.sample_raster(raster, gedi_2021, kernel)
-    logger.debug('Match 2022')
-    raster = gedi_raster_matching.get_landsat_raster_sampler(2022)
-    gedi_2022 = gedi_raster_matching.sample_raster(raster, gedi_2022, kernel)
-
-    gedi_burned = pd.concat([gedi_2019, gedi_2020, gedi_2021, gedi_2022])
-
-    gedi_2019 = gedi_unburned[gedi_unburned.gedi_year == 2019]
-    gedi_2020 = gedi_unburned[gedi_unburned.gedi_year == 2020]
-    gedi_2021 = gedi_unburned[gedi_unburned.gedi_year == 2021]
-    gedi_2022 = gedi_unburned[(gedi_unburned.gedi_year == 2022) | (
-        gedi_unburned.gedi_year == 2023)]
-
-    logger.debug('Match 2019')
-    raster = gedi_raster_matching.get_landsat_raster_sampler(2019)
-    gedi_2019 = gedi_raster_matching.sample_raster(raster, gedi_2019, kernel)
-    logger.debug('Match 2020')
-    raster = gedi_raster_matching.get_landsat_raster_sampler(2020)
-    gedi_2020 = gedi_raster_matching.sample_raster(raster, gedi_2020, kernel)
-    logger.debug('Match 2021')
-    raster = gedi_raster_matching.get_landsat_raster_sampler(2021)
-    gedi_2021 = gedi_raster_matching.sample_raster(raster, gedi_2021, kernel)
-    logger.debug('Match 2022')
-    raster = gedi_raster_matching.get_landsat_raster_sampler(2022)
-    gedi_2022 = gedi_raster_matching.sample_raster(raster, gedi_2022, kernel)
-
-    gedi_unburned = pd.concat([gedi_2019, gedi_2020, gedi_2021, gedi_2022])
+    gedi_burned = _match_gedi_with_landsat(gedi_burned, kernel)
+    gedi_unburned = _match_gedi_with_landsat(gedi_unburned, kernel)
 
     if save:
-        logger.debug(
-            f"Saving stage 10 processed burned shots as pkl, \
-            for kernel {kernel}.")
-        save_pickle(
-            f"{GEDI_PATH}/sierras_gedi_combined_stage_10_{kernel}x{kernel}_burned.pkl",
-            gedi_burned)
+        _save_df_as_pickle("sierras_gedi_combined_stage_10_{kernel}x{kernel}_burned.pkl",
+                           gedi_burned)
 
-        logger.debug(
-            f"Saving stage 10 processed unburned shots as pkl, \
-            for kernel {kernel}.")
-        save_pickle(
-            f"{GEDI_PATH}/sierras_gedi_combined_stage_10_{kernel}x{kernel}_unburned.pkl",
-            gedi_unburned)
+        _save_df_as_pickle("sierras_gedi_combined_stage_10_{kernel}x{kernel}_unburned.pkl",
+                           gedi_unburned)
 
     return gedi_burned, gedi_unburned
+
+
+def _match_gedi_with_landsat(gedi_df: gpd.GeoDataframe, kernel: int):
+    gedi_df_combined_years = []
+    for year in range(2019, 2023):
+        if year == 2022:
+            gedi_for_year = gedi_df[gedi_df.gedi_year >= year]
+        else:
+            gedi_for_year = gedi_df[gedi_df.gedi_year == year]
+
+        logger.debug(f'Match Landsat for year {year}')
+        raster = gedi_raster_matching.get_landsat_raster_sampler(year)
+        gedi_for_year = gedi_raster_matching.sample_raster(raster,
+                                                           gedi_for_year,
+                                                           kernel)
+
+        gedi_df_combined_years.append(gedi_for_year)
+
+    return pd.concat(gedi_df_combined_years)
 
 
 '''
 Stage 9 of the GEDI pipeline - Filter Terrain.
 '''
 
-
-def load_stage_9_B(kernel: int):
-    gedi_burned = get_gedi_as_gdp(
-        f"{GEDI_PATH}/sierras_gedi_combined_stage_9_{kernel}x{kernel}_burned_B.pkl",
-        pickle=True)
-
-    gedi_unburned = get_gedi_as_gdp(
-        f"{GEDI_PATH}/sierras_gedi_combined_stage_9_{kernel}x{kernel}_unburned_B.pkl",
-        pickle=True)
-
-    return gedi_burned, gedi_unburned
+# TODO: Decide on terrain filtering - do nothing right now. Skip this stage
 
 
 def load_stage_9(kernel: int):
     gedi_burned = get_gedi_as_gdp(
-        f"{GEDI_PATH}/sierras_gedi_combined_stage_9_{kernel}x{kernel}_burned.pkl",
-        pickle=True)
+        f"sierras_combined_shots_stage_8_{kernel}x{kernel}_burned.pkl")
 
     gedi_unburned = get_gedi_as_gdp(
-        f"{GEDI_PATH}/sierras_gedi_combined_stage_9_{kernel}x{kernel}_unburned.pkl",
-        pickle=True)
-
-    return gedi_burned, gedi_unburned
-
-
-def stage_9_filter_terrain_l4a_sierras_B(kernel: int, save: bool = True):
-    gedi_burned, gedi_unburned = load_stage_8_B(kernel)
-
-    # First, match soil, so that all the pixels in the kernel have the same
-    # soil.
-    gedi_burned = gedi_burned[gedi_burned.soil_std == 0]
-    gedi_unburned = gedi_unburned[gedi_unburned.soil_std == 0]
-
-    columns_to_drop = [f"soil_{kernel}x{kernel}",
-                       f"aspect_{kernel}x{kernel}",
-                       f"elevation_{kernel}x{kernel}",
-                       f"slope_{kernel}x{kernel}",
-                       "soil_mean",
-                       "aspect_median",
-                       "elevation_median",
-                       "slope_median",
-                       "soil_std",
-                       "aspect_std",
-                       "elevation_std",
-                       "slope_std"]
-
-    columns_to_rename = {"soil_median": "soil",
-                         "aspect_mean": "aspect",
-                         "slope_mean": "slope",
-                         "elevation_mean": "elevation"}
-
-    gedi_burned.drop(columns=columns_to_drop, inplace=True)
-    gedi_unburned.drop(columns=columns_to_drop, inplace=True)
-    gedi_burned.rename(columns=columns_to_rename, inplace=True)
-    gedi_unburned.rename(columns=columns_to_rename, inplace=True)
-
-    if save:
-        logger.debug(
-            f"Saving stage 9-B processed burned shots as pkl, \
-            for kernel {kernel}.")
-        save_pickle(
-            f"{GEDI_PATH}/sierras_gedi_combined_stage_9_{kernel}x{kernel}_burned_B.pkl",
-            gedi_burned)
-
-        logger.debug(
-            f"Saving stage 9-B processed unburned shots as pkl, \
-            for kernel {kernel}.")
-        save_pickle(
-            f"{GEDI_PATH}/sierras_gedi_combined_stage_9_{kernel}x{kernel}_unburned_B.pkl",
-            gedi_unburned)
+        f"sierras_combined_shots_stage_8_{kernel}x{kernel}_unburned.pkl")
 
     return gedi_burned, gedi_unburned
 
@@ -266,25 +222,16 @@ def stage_9_filter_terrain_l4a_sierras(kernel: int, save: bool = True):
                          "slope_mean": "slope",
                          "elevation_mean": "elevation"}
 
-    gedi_burned.drop(columns=columns_to_drop, inplace=True)
-    gedi_unburned.drop(columns=columns_to_drop, inplace=True)
-    gedi_burned.rename(columns=columns_to_rename, inplace=True)
-    gedi_unburned.rename(columns=columns_to_rename, inplace=True)
+    # gedi_burned.drop(columns=columns_to_drop, inplace=True)
+    # gedi_unburned.drop(columns=columns_to_drop, inplace=True)
+    # gedi_burned.rename(columns=columns_to_rename, inplace=True)
+    # gedi_unburned.rename(columns=columns_to_rename, inplace=True)
 
     if save:
-        logger.debug(
-            f"Saving stage 9 processed burned shots as pkl, \
-            for kernel {kernel}.")
-        save_pickle(
-            f"{GEDI_PATH}/sierras_gedi_combined_stage_9_{kernel}x{kernel}_burned.pkl",
-            gedi_burned)
-
-        logger.debug(
-            f"Saving stage 9 processed unburned shots as pkl, \
-            for kernel {kernel}.")
-        save_pickle(
-            f"{GEDI_PATH}/sierras_gedi_combined_stage_9_{kernel}x{kernel}_unburned.pkl",
-            gedi_unburned)
+        _save_df_as_pickle("sierras_gedi_combined_stage_9_{kernel}x{kernel}_burned.pkl",
+                           gedi_burned)
+        _save_df_as_pickle("sierras_gedi_combined_stage_9_{kernel}x{kernel}_unburned.pkl",
+                           gedi_unburned)
 
     return gedi_burned, gedi_unburned
 
@@ -296,24 +243,10 @@ Stage 8 of the GEDI pipeline - Match Terrain.
 
 def load_stage_8(kernel: int):
     gedi_burned = get_gedi_as_gdp(
-        f"{GEDI_PATH}/sierras_combined_shots_stage_8_{kernel}x{kernel}_burned.pkl",
-        pickle=True)
+        f"sierras_combined_shots_stage_8_{kernel}x{kernel}_burned.pkl")
 
     gedi_unburned = get_gedi_as_gdp(
-        f"{GEDI_PATH}/sierras_combined_shots_stage_8_{kernel}x{kernel}_unburned.pkl",
-        pickle=True)
-
-    return gedi_burned, gedi_unburned
-
-
-def load_stage_8_B(kernel: int):
-    gedi_burned = get_gedi_as_gdp(
-        f"{GEDI_PATH}/sierras_combined_shots_stage_8_{kernel}x{kernel}_burned_B.pkl",
-        pickle=True)
-
-    gedi_unburned = get_gedi_as_gdp(
-        f"{GEDI_PATH}/sierras_combined_shots_stage_8_{kernel}x{kernel}_unburned_B.pkl",
-        pickle=True)
+        f"sierras_combined_shots_stage_8_{kernel}x{kernel}_unburned.pkl")
 
     return gedi_burned, gedi_unburned
 
@@ -324,42 +257,10 @@ def stage_8_match_terrain_l4a_sierras(kernel: int, save: bool = True):
     gedi_burned = gedi_raster_matching.match_terrain(gedi_burned, kernel)
     gedi_unburned = gedi_raster_matching.match_terrain(gedi_unburned, kernel)
     if save:
-        logger.debug(
-            f"Saving stage 8 processed burned shots as pkl, \
-            for kernel {kernel}.")
-        save_pickle(
-            f"{GEDI_PATH}/sierras_combined_shots_stage_8_{kernel}x{kernel}_burned.pkl",
-            gedi_burned)
-
-        logger.debug(
-            f"Saving stage 8 processed unburned shots as pkl, \
-            for kernel {kernel}.")
-        save_pickle(
-            f"{GEDI_PATH}/sierras_combined_shots_stage_8_{kernel}x{kernel}_unburned.pkl",
-            gedi_unburned)
-
-    return gedi_burned, gedi_unburned
-
-
-def stage_8_match_terrain_l4a_sierras_B(kernel: int, save: bool = True):
-    gedi_burned, gedi_unburned = load_stage_7_B(kernel)
-
-    gedi_burned = gedi_raster_matching.match_terrain(gedi_burned, kernel)
-    gedi_unburned = gedi_raster_matching.match_terrain(gedi_unburned, kernel)
-    if save:
-        logger.debug(
-            f"Saving stage 8 processed burned shots as pkl, \
-            for kernel {kernel}.")
-        save_pickle(
-            f"{GEDI_PATH}/sierras_gedi_shots_stage_8_{kernel}x{kernel}_burned_B.pkl",
-            gedi_burned)
-
-        logger.debug(
-            f"Saving stage 8 processed unburned shots as pkl, \
-            for kernel {kernel}.")
-        save_pickle(
-            f"{GEDI_PATH}/sierras_gedi_shots_stage_8_{kernel}x{kernel}_unburned_B.pkl",
-            gedi_unburned)
+        _save_df_as_pickle("sierras_combined_shots_stage_8_{kernel}x{kernel}_burned.pkl",
+                           gedi_burned)
+        _save_df_as_pickle("sierras_combined_shots_stage_8_{kernel}x{kernel}_unburned.pkl",
+                           gedi_unburned)
 
     return gedi_burned, gedi_unburned
 
@@ -369,23 +270,11 @@ Stage 7 of the GEDI pipeline - Filter Land Cover.
 '''
 
 
-def load_stage_7_B(kernel: int):
-    gedi_burned, _ = load_stage_7(kernel)
-
-    # In this case, unburned has not be filtered based on land cover.
-    _, gedi_unburned = load_stage_5(kernel)
-
-    return gedi_burned, gedi_unburned
-
-
 def load_stage_7(kernel: int):
     gedi_burned = get_gedi_as_gdp(
-        f"{GEDI_PATH}/sierras_combined_shots_stage_7_{kernel}x{kernel}_burned.pkl",
-        pickle=True)
+        f"sierras_combined_shots_stage_7_{kernel}x{kernel}_burned.pkl")
 
-    gedi_unburned = get_gedi_as_gdp(
-        f"{GEDI_PATH}/sierras_combined_shots_stage_7_{kernel}x{kernel}_unburned.pkl",
-        pickle=True)
+    _, gedi_unburned = load_stage_5(kernel)
 
     return gedi_burned, gedi_unburned
 
@@ -401,35 +290,27 @@ def stage_7_filter_land_cover_l4a_sierras(kernel: int, save: bool = True):
                 {gedi_burned.shape[0]}')
 
     # Keep only unburned trees.
-    gedi_unburned = gedi_unburned[
-        (gedi_unburned.land_cover_std == 0) &
-        (gedi_unburned.land_cover_median == 1)]
-    logger.debug(f'Number of unburned shots that were trees in 2021: \
-            {gedi_unburned.shape[0]}')
+    # gedi_unburned = gedi_unburned[
+    #    (gedi_unburned.land_cover_std == 0) &
+    #    (gedi_unburned.land_cover_median == 1)]
+    # logger.debug(f'Number of unburned shots that were trees in 2021: \
+    #        {gedi_unburned.shape[0]}')
 
     # Drop land cover columns, since we've filtered them.
-    columns_to_drop = [f"land_cover_3x3",
+    columns_to_drop = [f"land_cover_{kernel}x{kernel}",
                        "land_cover_mean",
                        "land_cover_std",
                        "land_cover_median"]
 
     gedi_burned.drop(columns=columns_to_drop, inplace=True)
-    gedi_unburned.drop(columns=columns_to_drop, inplace=True)
+    # gedi_unburned.drop(columns=columns_to_drop, inplace=True)
 
     if save:
-        logger.debug(
-            f"Saving stage 7 processed burned shots as pkl, \
-            for kernel {kernel}.")
-        save_pickle(
-            f"{GEDI_PATH}/sierras_combined_shots_stage_7_{kernel}x{kernel}_burned.pkl",
-            gedi_burned)
+        _save_df_as_pickle("sierras_combined_shots_stage_7_{kernel}x{kernel}_burned.pkl",
+                           gedi_burned)
 
-        logger.debug(
-            f"Saving stage 7 processed unburned shots as pkl, \
-            for kernel {kernel}.")
-        save_pickle(
-            f"{GEDI_PATH}/sierras_combined_shots_stage_7_{kernel}x{kernel}_unburned.pkl",
-            gedi_unburned)
+        # _save_df_as_pickle("sierras_combined_shots_stage_7_{kernel}x{kernel}_unburned.pkl",
+        #    gedi_unburned)
 
     return gedi_burned, gedi_unburned
 
@@ -441,12 +322,10 @@ Stage 6 of the GEDI pipeline - Match Land Cover.
 
 def load_stage_6(kernel: int):
     gedi_burned = get_gedi_as_gdp(
-        f"{GEDI_PATH}/sierras_combined_shots_stage_6_{kernel}x{kernel}_burned.pkl",
-        pickle=True)
+        f"sierras_combined_shots_stage_6_{kernel}x{kernel}_burned.pkl")
 
     gedi_unburned = get_gedi_as_gdp(
-        f"{GEDI_PATH}/sierras_combined_shots_stage_6_{kernel}x{kernel}_unburned.pkl",
-        pickle=True)
+        f"sierras_combined_shots_stage_5_{kernel}x{kernel}_unburned.pkl")
 
     return gedi_burned, gedi_unburned
 
@@ -456,26 +335,22 @@ def stage_6_match_land_cover_l4a_sierras(kernel: int, save: bool = True):
 
     # For each burn year, we want to match it to the land cover of the previous
     # year.
-    gedi_burned = gedi_raster_matching.match_burn_landcover(gedi_burned, 3)
+    gedi_burned = gedi_raster_matching.match_burn_landcover(
+        gedi_burned, kernel)
 
+    # TODO: Decide whether to match unburned to anything here, or just leave
+    # it as is. We will later match it to Dynamic World cover, so it's likely
+    # we can just use that for filtering.
     # Match unburned pixels with the latest land cover.
-    gedi_unburned = gedi_raster_matching.match_landcover_for_year(
-        2022, gedi_unburned, 3)
+    # gedi_unburned = gedi_raster_matching.match_landcover_for_year(
+    #    2022, gedi_unburned, 3)
 
     if save:
-        logger.debug(
-            f"Saving stage 6 processed burned shots as pkl, \
-            for kernel {kernel}.")
-        save_pickle(
-            f"{GEDI_PATH}/sierras_combined_shots_stage_6_{kernel}x{kernel}_burned.pkl",
-            gedi_burned)
+        _save_df_as_pickle("sierras_combined_shots_stage_6_{kernel}x{kernel}_burned.pkl",
+                           gedi_burned)
 
-        logger.debug(
-            f"Saving stage 6 processed unburned shots as pkl, \
-            for kernel {kernel}.")
-        save_pickle(
-            f"{GEDI_PATH}/sierras_combined_shots_stage_6_{kernel}x{kernel}_unburned.pkl",
-            gedi_unburned)
+        # _save_df_as_pickle("sierras_combined_shots_stage_6_{kernel}x{kernel}_unburned.pkl",
+        #    gedi_unburned)
 
     return gedi_burned, gedi_unburned
 
@@ -487,10 +362,10 @@ Stage 5 of the GEDI pipeline - Filter for regrowth analysis.
 
 def load_stage_5(kernel: int):
     gedi_burned = get_gedi_as_gdp(
-        f"{GEDI_PATH}/sierras_combined_shots_stage_5_{kernel}x{kernel}_burned.pkl", pickle=True)
+        f"sierras_combined_shots_stage_5_{kernel}x{kernel}_burned.pkl")
 
     gedi_unburned = get_gedi_as_gdp(
-        f"{GEDI_PATH}/sierras_combined_shots_stage_5_{kernel}x{kernel}_unburned.pkl", pickle=True)
+        f"sierras_combined_shots_stage_5_{kernel}x{kernel}_unburned.pkl")
 
     return gedi_burned, gedi_unburned
 
@@ -501,19 +376,10 @@ def stage_5_filter_for_regrowth_l4a_sierras(kernel: int, save: bool = True):
     gedi_burned = filter_shots_for_regrowth_analysis(gedi_burned)
 
     if save:
-        logger.debug(
-            f"Saving stage 5 processed burned shots as pkl, \
-            for kernel {kernel}.")
-        save_pickle(
-            f"{GEDI_PATH}/sierras_combined_shots_stage_5_{kernel}x{kernel}_burned.pkl",
-            gedi_burned)
-
-        logger.debug(
-            f"Saving stage 5 processed unburned shots as pkl, \
-            for kernel {kernel}.")
-        save_pickle(
-            f"{GEDI_PATH}/sierras_combined_shots_stage_5_{kernel}x{kernel}_unburned.pkl",
-            gedi_unburned)
+        _save_df_as_pickle("sierras_combined_shots_stage_5_{kernel}x{kernel}_burned.pkl",
+                           gedi_burned)
+        _save_df_as_pickle("sierras_combined_shots_stage_5_{kernel}x{kernel}_unburned.pkl",
+                           gedi_unburned)
 
     return gedi_burned, gedi_unburned
 
@@ -540,12 +406,10 @@ Stage 4 of the GEDI pipeline - Filter for burned areas.
 
 def load_stage_4(kernel: int):
     gedi_burned = get_gedi_as_gdp(
-        f"{GEDI_PATH}/sierras_combined_shots_stage_4_{kernel}x{kernel}_burned.pkl",
-        pickle=True)
+        f"sierras_combined_shots_stage_4_{kernel}x{kernel}_burned.pkl")
 
     gedi_unburned = get_gedi_as_gdp(
-        f"{GEDI_PATH}/sierras_combined_shots_stage_4_{kernel}x{kernel}_unburned.pkl",
-        pickle=True)
+        f"sierras_combined_shots_stage_4_{kernel}x{kernel}_unburned.pkl")
 
     return gedi_burned, gedi_unburned
 
@@ -558,27 +422,18 @@ def stage_4_filter_burns_l4a_sierras(kernel: int, save: bool = True):
     gedi_burned, gedi_unburned = filter_burn_areas(gedi, kernel)
 
     if save:
-        logger.debug(
-            f"Saving stage 4 processed burned shots as pkl, \
-            for kernel {kernel}.")
-        save_pickle(
-            f"{GEDI_PATH}/sierras_combined_shots_stage_4_{kernel}x{kernel}_burned.pkl",
-            gedi_burned)
-
-        logger.debug(
-            f"Saving stage 4 processed unburned shots as pkl, \
-            for kernel {kernel}.")
-        save_pickle(
-            f"{GEDI_PATH}/sierras_combined_shots_stage_4_{kernel}x{kernel}_unburned.pkl",
-            gedi_unburned)
+        _save_df_as_pickle("sierras_combined_shots_stage_4_{kernel}x{kernel}_burned.pkl",
+                           gedi_burned)
+        _save_df_as_pickle("sierras_combined_shots_stage_4_{kernel}x{kernel}_unburned.pkl",
+                           gedi_unburned)
 
 
 def filter_burn_areas(gedi: gpd.GeoDataFrame, kernel: int):
     gedi_burned, gedi_unburned = divide_shots_into_burned_and_unburned(gedi)
     gedi_burned = exclude_shots_on_burn_boundaries(gedi_burned)
 
-    # Remove 3x3 columns, as they are not relevant any more since all shots at
-    # the boundary have been excluded.
+    # Remove (kernel x kernel) columns, as they are not relevant any more
+    # since all shots at the boundary have been excluded.
     columns_to_drop = [f"burn_severity_{kernel}x{kernel}",
                        f"burn_counts_{kernel}x{kernel}",
                        f"burn_year_{kernel}x{kernel}",
@@ -662,15 +517,11 @@ def load_stage_3(kernel: int):
 
 
 def stage_3_match_burn_raster_l4a_sierras(kernel: int, save: bool = True):
-    gedi = get_gedi_as_gdp(
-        f"{GEDI_PATH}/sierras_combined_shots_stage_2.pkl", pickle=True)
+    gedi = get_gedi_as_gdp(f"sierras_combined_shots_stage_2.pkl")
     match = gedi_raster_matching.match_burn_raster(gedi, kernel)
     if save:
-        logger.debug(
-            f"Saving stage 3 processed shots as pickle, for kernel {kernel}.")
-        save_pickle(
-            f"{GEDI_PATH}/sierras_combined_shots_stage_3_{kernel}x{kernel}.pkl",
-            match)
+        _save_df_as_pickle(
+            "sierras_combined_shots_stage_3_{kernel}x{kernel}.pkl", match)
     return match
 
 
@@ -683,17 +534,14 @@ Stage 2 of the GEDI pipeline - Basic data cleanup:
 
 
 def load_stage_2():
-    return get_gedi_as_gdp(
-        f"{GEDI_PATH}/sierras_combined_shots_stage_2.pkl", pickle=True)
+    return get_gedi_as_gdp("sierras_combined_shots_stage_2.pkl")
 
 
 def stage_2_basic_processing_of_l4a_sierras_data(save: bool = True):
-    gedi = get_gedi_as_gdp(f"{DATA_PATH}/sierras_combined_shots.pkl",
-                           pickle=True)
+    gedi = get_gedi_as_gdp(f"sierras_gedi_combined_shots.pkl")
     gedi = initial_l4a_shot_processing(gedi)
     if save:
-        logger.debug("Saving stage 2 processed shots as pickle.")
-        save_pickle(f"{GEDI_PATH}/sierras_combined_shots_stage_2.pkl", gedi)
+        _save_df_as_pickle("sierras_combined_shots_stage_2.pkl", gedi)
     return gedi
 
 
@@ -707,21 +555,11 @@ def initial_l4a_shot_processing(gedi_gdf: pd.DataFrame):
 
     gedi_gdf.rename(columns={"lon_lowestmode": "longitude",
                              "lat_lowestmode": "latitude"}, inplace=True)
-
-    # COLUMNS_TO_KEEP = ["shot_number", "longitude", "latitude", "agbd",
-    #                   "agbd_pi_lower", "agbd_pi_upper", "agbd_se",
-    #                   "beam_type", "sensitivity", "pft_class", "gedi_year",
-    #                   "gedi_month", "absolute_time"]
-
     return gedi_gdf
 
 
-def get_gedi_as_gdp(file_path: str, pickle: bool = False) -> gpd.GeoDataFrame:
-    if pickle:
-        gedi = load_pickle(file_path)
-    else:
-        # CSV file.
-        gedi = pd.read_csv(file_path, index_col=0)
+def get_gedi_as_gdp(file_name: str) -> gpd.GeoDataFrame:
+    gedi = load_pickle(f"{GEDI_PATH}/{file_name}")
 
     if "lon_lowestmode" in gedi.columns:
         longitude = "lon_lowestmode"
@@ -736,9 +574,14 @@ def get_gedi_as_gdp(file_path: str, pickle: bool = False) -> gpd.GeoDataFrame:
                             crs=4326)
 
 
+def _save_df_as_pickle(file_name: str, df):
+    logger.debug(f"Saving {file_name}")
+    save_pickle(f"{GEDI_PATH}/{file_name}", df)
+
+
 '''
 Stage 1 of the GEDI pipeline: Loading GEDI shots from postgres database for 
-geometries of interest, and saving them in CSV files.
+geometries of interest, and saving them in pkl files.
 
 Two regions that we're working on in this project: Sierras and SEKI (Sequoia
 and Kings National Park). We use Convex hull as a shapefile, because it's 
@@ -756,7 +599,7 @@ def fetch_from_db_gedi_l2ab_l4a_for_sierras(save: bool = True):
         f"{USER_PATH}/data/shapefiles/sierras_convex_hull.shp").geometry
 
     if save:
-        file_path = f"{DATA_PATH}/sierras_gedi_combined_shots.pkl"
+        file_path = f"{GEDI_PATH}/sierras_gedi_combined_shots.pkl"
 
     return gedi_loader.get_combined_l2ab_l4a_shots(
         geometry=geometry,
@@ -769,7 +612,7 @@ def fetch_from_db_gedi_l2ab_l4a_for_seki(save: bool = True):
         f"{USER_PATH}/data/shapefiles/seki_convex_hull.shp").geometry
 
     if save:
-        file_path = f"{DATA_PATH}/seki_gedi_combined_shots.pkl"
+        file_path = f"{GEDI_PATH}/seki_gedi_combined_shots.pkl"
 
     return gedi_loader.get_combined_l2ab_l4a_shots(
         geometry=geometry,
@@ -782,7 +625,7 @@ def fetch_from_db_gedi_l4a_for_sierras(save: bool = True):
         f"{USER_PATH}/data/shapefiles/sierras_convex_hull.shp").geometry
 
     if save:
-        file_path = f"{DATA_PATH}/sierras_gedi_l4a_shots.pkl"
+        file_path = f"{GEDI_PATH}/sierras_gedi_l4a_shots.pkl"
 
     return gedi_loader.get_l2b_gedi_shots(
         geometry=geometry,
@@ -795,7 +638,7 @@ def fetch_from_db_gedi_l2b_for_sierras(save: bool = True):
         f"{USER_PATH}/data/shapefiles/sierras_convex_hull.shp").geometry
 
     if save:
-        file_path = f"{DATA_PATH}/sierras_gedi_l2b_shots.pkl"
+        file_path = f"{GEDI_PATH}/sierras_gedi_l2b_shots.pkl"
 
     return gedi_loader.get_l2b_gedi_shots(
         geometry=geometry,
@@ -808,7 +651,7 @@ def fetch_from_db_gedi_l4a_for_seki(save: bool = True):
         f"{USER_PATH}/data/shapefiles/seki_convex_hull.shp").geometry
 
     if save:
-        file_path = f"{DATA_PATH}/seki_gedi_l4a_shots.pkl"
+        file_path = f"{GEDI_PATH}/seki_gedi_l4a_shots.pkl"
 
     return gedi_loader.get_l4a_gedi_shots(
         geometry=geometry,
@@ -821,7 +664,7 @@ def fetch_from_db_gedi_l2b_for_seki(save: bool = True):
         f"{USER_PATH}/data/shapefiles/seki_convex_hull.shp").geometry
 
     if save:
-        file_path = f"{DATA_PATH}/seki_gedi_l2b_shots.pkl"
+        file_path = f"{GEDI_PATH}/seki_gedi_l2b_shots.pkl"
 
     return gedi_loader.get_l2b_gedi_shots(
         geometry=geometry,

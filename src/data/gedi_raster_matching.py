@@ -34,12 +34,18 @@ TERRAIN_BANDS = ['aspect', 'elevation', 'slope', 'soil']
 LANDSAT5_BANDS = ['SR_B1', 'SR_B2', 'SR_B3', 'SR_B4', 'SR_B5', 'SR_B7', 'NDVI']
 LANDSAT8_BANDS = ["SR_B1", "SR_B2", "SR_B3", "SR_B4", "SR_B5", "SR_B6",
                   "SR_B7", "NDVI"]
+DW_BANDS = ["dw_land_cover"]
 
 
 def get_landsat_raster_sampler(year):
     raster_path = LANDSAT_RASTER(year)
     bands = get_landsat_bands(year)
     return raster.RasterSampler(raster_path, bands)
+
+
+def get_dw_raster_sampler(year):
+    raster_path = DYNAMIC_WORLD_RASTER(year)
+    return raster.RasterSampler(raster_path, DW_BANDS)
 
 
 def which_landsat(year):
@@ -126,6 +132,18 @@ def merge_landsat_tiles_for_year(year):
     path = Path(f"{DATA_PATH}/rasters/LANDSAT/{year}")
     output_file_path = f"{path}/landsat{landsat}_{year}.tif"
 
+    merge_raster_tiles(path, output_file_path)
+
+
+def merge_dynamic_world_tiles_for_year(year):
+    logger.debug(f"Merging tiles for year {year}")
+    path = Path(f"{DATA_PATH}/rasters/DYNAMIC_WORLD/{year}")
+    output_file_path = f"{DATA_PATH}/rasters/DYNAMIC_WORLD/dynamic_world_{year}.tif"
+
+    merge_raster_tiles(path, output_file_path)
+
+
+def merge_raster_tiles(path, output_file_path):
     if os.path.exists(output_file_path):
         # We've merged the tiles already, early exit.
         return
