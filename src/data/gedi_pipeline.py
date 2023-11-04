@@ -111,7 +111,7 @@ def stage_11_match_with_dynamic_world(save: bool = True):
 
 def _match_gedi_with_dynamic_world(gedi_df: gpd.GeoDataFrame):
     gedi_df_combined_years = []
-    for year in range(2019, 2023):
+    for year in range(2019, 2024):
         gedi_for_year = gedi_df[gedi_df.gedi_year == year]
 
         logger.debug(f'Match with Dynamic World for year {year - 1}')
