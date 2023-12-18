@@ -54,7 +54,7 @@ def get_combined_l2ab_l4a_shots(
             "l4_quality_flag",
             # "predictor_limit_flag",
             # "response_limit_flag",
-            # "solar_elevation",
+            "solar_elevation",
 
             # Processing data
             # "selected_algorithm",
