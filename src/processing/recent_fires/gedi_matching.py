@@ -51,10 +51,33 @@ def find_matches(
     for col in columns:
         result[f'{col}_after'] = right_input.iloc[closest_indeces.flatten()
                                                   ][col].values
-        result[f'{col}_diff'] = result[col] - result[f'{col}_after']
+        result[f'{col}_diff'] = result[f'{col}_after'] - result[col]
         result[f'{col}_rel'] = result[f'{col}_after']/result[col]
 
     return result
+
+
+def match_measurements_before_and_after_fire_no_severity(
+        fire: Fire,
+        gedi: gpd.GeoDataFrame,
+        column: str,
+        start_offset: int = 0,
+        end_offset: int = None
+) -> gpd.GeoDataFrame:
+    within_fire_perimeter = gedi.sjoin(
+        fire.fire, how="inner", predicate="within")
+
+    before_fire = get_shots_before_date(fire.alarm_date, within_fire_perimeter)
+    after_fire = get_shots_after_date(
+        fire.cont_date, within_fire_perimeter, start_offset, end_offset)
+
+    if before_fire.shape[0] == 0 or after_fire.shape[0] == 0:
+        # No GEDI shots at the fire area found.
+        return None
+
+    # For each shot in before fire, find the closest shot after fire.
+    # Break it down per severity.
+    return find_matches(before_fire, after_fire, column=column)
 
 
 def match_measurements_before_and_after_fire(
