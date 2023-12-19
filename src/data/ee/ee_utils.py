@@ -28,7 +28,7 @@ def save_image_to_drive(image: ee.Image, polygon: shapely.Polygon, img_name: str
         'folder': GDRIVE_FOLDER_NAME + subfolder,
         'scale': scale,
         'region': ee_geom.getInfo()['coordinates'],
-        'maxPixels': 538689467
+        'maxPixels': 3887554944
     })
     task.start()
 
@@ -82,6 +82,7 @@ def ee_array_to_df(arr, list_of_bands):
     df = df[['time', 'datetime',  *list_of_bands]]
 
     return df
+
 
 def ee_array_to_df_without_time(arr, list_of_bands):
     """Transforms client-side ee.Image.getRegion array to pandas.DataFrame."""
