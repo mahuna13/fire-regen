@@ -4,7 +4,7 @@ import pandas as pd
 import rasterio as rio
 
 from src.data import gedi_loader
-from src.data.raster import RasterSampler, reproject_raster
+from src.data.utils.raster import RasterSampler, reproject_raster
 from src.utils.logging_util import get_logger
 from src.constants import DATA_PATH, USER_PATH
 
@@ -21,7 +21,7 @@ class MTBSFirePerimetersDB:
 
         # Find fires that fall within the region.
         fires_within_region = perimeters.sjoin(
-            region_4269, how="inner", predicate="within")
+            region_4269, how="inner", predicate="intersects")
         fires_within_region.drop(columns="index_right", inplace=True)
 
         # Convert to a desired crs
@@ -61,6 +61,15 @@ class FirePerimeters:
     def filter_for_years(self, years: list[str]):
         ''' Filter fire perimeters to include only the years requested. '''
         self.perimeters = self.perimeters[self.perimeters.YEAR_.isin(years)]
+        return self
+
+    def filter_for_region(self, region: gpd.GeoDataFrame):
+        ''' Filter fire perimeters to intersect region provided. '''
+        self.perimeters = self.perimeters.sjoin(
+            region, how="inner", predicate="intersects")
+
+        # Remove the index that was added in the sjoin, since it's not needed.
+        self.perimeters.drop(columns="index_right", inplace=True)
         return self
 
     def filter_within_geometry(self, query_gpd: gpd.GeoDataFrame):

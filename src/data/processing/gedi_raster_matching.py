@@ -1,11 +1,12 @@
-import geopandas as gpd
-import pandas as pd
-from src.data import raster
 import os
 from pathlib import Path
-from src.constants import DATA_PATH
+
+import geopandas as gpd
+import pandas as pd
 import rasterio as rio
 from rasterio.merge import merge
+from src.constants import DATA_PATH
+from src.data.utils import raster
 from src.utils.logging_util import get_logger
 
 logger = get_logger(__file__)
