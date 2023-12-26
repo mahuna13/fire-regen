@@ -4,29 +4,10 @@ import pandas as pd
 import rasterio as rio
 
 from src.data import gedi_loader
-from src.data.raster import RasterSampler, reproject_raster
+from src.data.utils.raster import RasterSampler, reproject_raster
 from src.utils.logging_util import get_logger
-from src.constants import DATA_PATH, USER_PATH
 
 logger = get_logger(__file__)
-
-
-class MTBSFirePerimetersDB:
-    def __init__(self, region: gpd.GeoDataFrame, crs=4326):
-        # MTBS dataset is in 4269 CRS.
-        perimeters = gpd.read_file(f"{DATA_PATH}/mtbs/mtbs_perims_DD.shp")
-
-        # Convert region to the same geometry.
-        region_4269 = region.to_crs(4269)
-
-        # Find fires that fall within the region.
-        fires_within_region = perimeters.sjoin(
-            region_4269, how="inner", predicate="within")
-        fires_within_region.drop(columns="index_right", inplace=True)
-
-        # Convert to a desired crs
-        self.perimeters = fires_within_region.to_crs(crs)
-        self.perimeters["Ig_Date"] = pd.to_datetime(self.perimeters.Ig_Date)
 
 
 class FirePerimetersDB:
@@ -63,6 +44,15 @@ class FirePerimeters:
         self.perimeters = self.perimeters[self.perimeters.YEAR_.isin(years)]
         return self
 
+    def filter_for_region(self, region: gpd.GeoDataFrame):
+        ''' Filter fire perimeters to intersect region provided. '''
+        self.perimeters = self.perimeters.sjoin(
+            region, how="inner", predicate="intersects")
+
+        # Remove the index that was added in the sjoin, since it's not needed.
+        self.perimeters.drop(columns="index_right", inplace=True)
+        return self
+
     def filter_within_geometry(self, query_gpd: gpd.GeoDataFrame):
         ''' Filter fire perimeters to be within geometries provided. '''
         self.perimeters = self.perimeters.sjoin(
@@ -84,61 +74,11 @@ class FirePerimeters:
         return self.perimeters.shape[0]
 
     def get_largest_fires(self, count: int = 10):
-        return self.perimeters.sort_values('Shape_Area', ascending=False).head(count).FIRE_NAME
+        return self.perimeters.sort_values(
+            'Shape_Area', ascending=False).head(count).FIRE_NAME
 
     def get_fire(self, fire_name: str):
         return Fire(self.perimeters[self.perimeters.FIRE_NAME == fire_name])
-
-
-class MTBSFire:
-    def __init__(self, fire_info: gpd.GeoDataFrame):
-        self.fire = fire_info
-
-        # Create a gdf to store the area around the fire, called fire buffer.
-        fire_geometry = self.fire.geometry.iloc[0]
-        self.fire_buffer = gpd.GeoSeries([fire_geometry.buffer(
-            1000).symmetric_difference(fire_geometry)])
-
-    def get_buffer(self, width: int, exclusion_zone: int = 100):
-        # convert to projected CRS to be able to specify distances in meters.
-        fire_projected = self.fire.to_crs(epsg=3310)
-
-        fire_geom = fire_projected.geometry.iloc[0]
-
-        exclude = fire_geom.buffer(
-            exclusion_zone).union(fire_geom)
-        buffer = exclude.buffer(width).symmetric_difference(exclude)
-
-        return gpd.GeoDataFrame(geometry=gpd.GeoSeries([buffer]), crs=3310) \
-            .to_crs(self.fire.crs)
-
-    def overlay_fire_map(self, gdf: gpd.GeoDataFrame):
-        self.fire.overlay(gdf, how="union").plot(cmap='tab20b')
-
-    def load_gedi(self, load_buffer: bool = False):
-        ''' Loads GEDI shots stored for the fire from postgress database. '''
-        self.gedi = gedi_loader.get_gedi_shots(self.fire.geometry)
-
-        if load_buffer:
-            self.gedi_buffer = gedi_loader.get_gedi_shots(
-                self.fire_buffer.geometry)
-
-    def get(self):
-        return self.fire
-
-    def get_gedi_before_fire(self):
-        return self.gedi[self.gedi.absolute_time < self.alarm_date]
-
-    def get_gedi_buffer_before_fire(self):
-        return self.gedi_buffer[
-            self.gedi_buffer.absolute_time < self.alarm_date]
-
-    def get_gedi_after_fire(self):
-        return self.gedi[self.gedi.absolute_time > self.cont_date]
-
-    def get_gedi_buffer_after_fire(self):
-        return self.gedi_buffer[
-            self.gedi_buffer.absolute_time > self.cont_date]
 
 
 class Fire:

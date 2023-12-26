@@ -1,8 +1,10 @@
-import rasterio as rio
-from rasterio.warp import calculate_default_transform, reproject, Resampling
-import pandas as pd
 import numpy as np
+import pandas as pd
+import rasterio as rio
 import rioxarray as riox
+from rasterio.warp import Resampling, calculate_default_transform, reproject
+
+pd.options.mode.chained_assignment = None  # default='warn'
 
 
 class RasterSampler:
@@ -10,7 +12,8 @@ class RasterSampler:
         self.raster = riox.open_rasterio(raster_file_path)
         self.bands = bands
 
-    def sample_2x2(self, df: pd.DataFrame, x_coord: str, y_coord: str):
+    def sample_2x2(self, df: pd.DataFrame, x_coord: str, y_coord: str,
+                   debug: bool = False):
         xs = get_idxs_two_nearest(self.raster.x.data, df[x_coord].values)
         ys = get_idxs_two_nearest(self.raster.y.data, df[y_coord].values)
         valid = np.logical_and.reduce(
@@ -33,13 +36,17 @@ class RasterSampler:
                  for i in [0, 1] for j in [0, 1]]
             ).T
 
-            df[f'{band_name}_2x2'] = list(band_values)
+            if debug:
+                # Could be helpful to get the values from all 4 cells.
+                df[f'{band_name}_2x2'] = list(band_values)
+
             df[f'{band_name}_mean'] = np.mean(band_values, axis=1)
             df[f'{band_name}_std'] = np.std(band_values, axis=1)
             df[f'{band_name}_median'] = np.median(band_values, axis=1)
         return df
 
-    def sample_3x3(self, df: pd.DataFrame, x_coord: str, y_coord: str):
+    def sample_3x3(self, df: pd.DataFrame, x_coord: str, y_coord: str,
+                   debug: bool = False):
         xs = get_idxs_three_nearest(self.raster.x.data, df[x_coord].values)
         ys = get_idxs_three_nearest(self.raster.y.data, df[y_coord].values)
         valid = np.logical_and.reduce(
@@ -62,7 +69,9 @@ class RasterSampler:
                  for i in [0, 1, 2] for j in [0, 1, 2]]
             ).T
 
-            df[f'{band_name}_3x3'] = list(band_values)
+            if debug:
+                # Could be helpful to get the values from all 4 cells.
+                df[f'{band_name}_3x3'] = list(band_values)
             df[f'{band_name}_mean'] = np.mean(band_values, axis=1)
             df[f'{band_name}_std'] = np.std(band_values, axis=1)
             df[f'{band_name}_median'] = np.median(band_values, axis=1)
