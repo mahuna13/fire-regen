@@ -1,9 +1,9 @@
-from src.constants import DATA_PATH, USER_PATH, GEDI_INTERMEDIATE_PATH
+from src.constants import GEDI_INTERMEDIATE_PATH
 from src.data.pipelines.extract_gedi_data import SIERRAS_GEDI_ID_COLUMNS
-from src.data.processing import burn_boundaries_overlay as bb
 from src.data.processing import burn_areas_overlay as ba
-from src.data.processing import severity_overlay as se
+from src.data.processing import burn_boundaries_overlay as bb
 from src.data.processing import raster_overlays
+from src.data.processing import severity_overlay as se
 
 OVERLAYS_PATH = f"{GEDI_INTERMEDIATE_PATH}/overlays"
 
