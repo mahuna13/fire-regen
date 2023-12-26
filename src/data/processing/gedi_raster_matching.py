@@ -18,7 +18,8 @@ TERRAIN_RASTER = f"{DATA_PATH}/rasters/TERRAIN/terrain_stack.tif"
 
 def LANDSAT_RASTER(year):
     landsat_num = which_landsat(year)
-    return f"{DATA_PATH}/rasters/LANDSAT/{year}/landsat{landsat_num}_{year}.tif"
+    file_name = f"landsat{landsat_num}_{year}.tif"
+    return f"{DATA_PATH}/rasters/LANDSAT/{year}/{file_name}"
 
 
 def DYNAMIC_WORLD_RASTER(year):
@@ -139,7 +140,8 @@ def merge_landsat_tiles_for_year(year):
 def merge_dynamic_world_tiles_for_year(year):
     logger.debug(f"Merging tiles for year {year}")
     path = Path(f"{DATA_PATH}/rasters/DYNAMIC_WORLD/{year}")
-    output_file_path = f"{DATA_PATH}/rasters/DYNAMIC_WORLD/dynamic_world_{year}.tif"
+    output_file_path = \
+        f"{DATA_PATH}/rasters/DYNAMIC_WORLD/dynamic_world_{year}.tif"
 
     merge_raster_tiles(path, output_file_path)
 

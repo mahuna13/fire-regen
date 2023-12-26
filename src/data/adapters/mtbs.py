@@ -1,8 +1,8 @@
 import geopandas as gpd
-from src.data import fire_perimeters
+import pandas as pd
+from fastai.tabular.all import save_pickle
 from src.constants import DATA_PATH, USER_PATH
-from fastai.tabular.all import load_pickle, save_pickle
-
+from src.data import fire_perimeters
 
 # Fetch simplified regions of interest.
 SEKI = gpd.read_file(f"{USER_PATH}/data/shapefiles/seki_convex_hull.shp")
@@ -15,6 +15,76 @@ def MTBS_PERIMETERS_TRIMMED(distance):
 
 MTBS_FIRES_TRIMMED_10m = MTBS_PERIMETERS_TRIMMED(10)
 MTBS_INDIVIDUAL_FIRES = f"{DATA_PATH}/mtbs/all_fires/mtbs"
+
+
+class MTBSFirePerimetersDB:
+    def __init__(self, region: gpd.GeoDataFrame, crs=4326):
+        # MTBS dataset is in 4269 CRS.
+        perimeters = gpd.read_file(f"{DATA_PATH}/mtbs/mtbs_perims_DD.shp")
+
+        # Convert region to the same geometry.
+        region_4269 = region.to_crs(4269)
+
+        # Find fires that fall within the region.
+        fires_within_region = perimeters.sjoin(
+            region_4269, how="inner", predicate="intersects")
+        fires_within_region.drop(columns="index_right", inplace=True)
+
+        # Convert to a desired crs
+        self.perimeters = fires_within_region.to_crs(crs)
+        self.perimeters["Ig_Date"] = pd.to_datetime(self.perimeters.Ig_Date)
+
+
+class MTBSFire:
+    def __init__(self, fire_info: gpd.GeoDataFrame):
+        self.fire = fire_info
+
+        # Create a gdf to store the area around the fire, called fire buffer.
+        fire_geometry = self.fire.geometry.iloc[0]
+        self.fire_buffer = gpd.GeoSeries([fire_geometry.buffer(
+            1000).symmetric_difference(fire_geometry)])
+
+    def get_buffer(self, width: int, exclusion_zone: int = 100):
+        # convert to projected CRS to be able to specify distances in meters.
+        fire_projected = self.fire.to_crs(epsg=3310)
+
+        fire_geom = fire_projected.geometry.iloc[0]
+
+        exclude = fire_geom.buffer(
+            exclusion_zone).union(fire_geom)
+        buffer = exclude.buffer(width).symmetric_difference(exclude)
+
+        return gpd.GeoDataFrame(geometry=gpd.GeoSeries([buffer]), crs=3310) \
+            .to_crs(self.fire.crs)
+
+    def overlay_fire_map(self, gdf: gpd.GeoDataFrame):
+        self.fire.overlay(gdf, how="union").plot(cmap='tab20b')
+
+    def load_gedi(self, load_buffer: bool = False):
+        # TODO: remove
+        ''' Loads GEDI shots stored for the fire from postgress database. '''
+        # self.gedi = gedi_loader.get_gedi_shots(self.fire.geometry)
+
+        # if load_buffer:
+        #    self.gedi_buffer = gedi_loader.get_gedi_shots(
+        #        self.fire_buffer.geometry)
+
+    def get(self):
+        return self.fire
+
+    def get_gedi_before_fire(self):
+        return self.gedi[self.gedi.absolute_time < self.alarm_date]
+
+    def get_gedi_buffer_before_fire(self):
+        return self.gedi_buffer[
+            self.gedi_buffer.absolute_time < self.alarm_date]
+
+    def get_gedi_after_fire(self):
+        return self.gedi[self.gedi.absolute_time > self.cont_date]
+
+    def get_gedi_buffer_after_fire(self):
+        return self.gedi_buffer[
+            self.gedi_buffer.absolute_time > self.cont_date]
 
 
 def get_mtbs_perimeters_for_sierras():
