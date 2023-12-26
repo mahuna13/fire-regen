@@ -38,7 +38,7 @@ def get_nearest(src_points, candidates, k_neighbors=1):
 
 def nearest_neighbors(left_gdf, right_gdf, k_neighbors=1):
     """
-    For each point in left_gdf, find closest points in right GeoDataFrame and 
+    For each point in left_gdf, find closest points in right GeoDataFrame and
     return their indeces and distances.
 
     NOTICE: Assumes that the input Points are in WGS84 projection (lat/lon).

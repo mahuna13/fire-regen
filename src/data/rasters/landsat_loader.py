@@ -1,5 +1,4 @@
 import rasterio
-import numpy as np
 from rasterio.merge import merge
 import os
 from src.utils.logging_util import get_logger
@@ -7,8 +6,8 @@ from src.utils.logging_util import get_logger
 logger = get_logger(__file__)
 LANDSAT_BANDS = ['nbr', 'ndvi', 'SR_B1', 'SR_B2',
                  'SR_B3', 'SR_B4', 'SR_B5', 'SR_B6', 'SR_B7']
-TERRAIN_OUTPUT_DIR = f"/maps/fire-regen/data/rasters/TERRAIN/"
-TERRAIN_PREFIX = f"terrain_"
+TERRAIN_OUTPUT_DIR = "/maps/fire-regen/data/rasters/TERRAIN/"
+TERRAIN_PREFIX = "terrain_"
 TERRAIN_BANDS = ['elevation', 'slope', 'aspect', 'soil']
 
 
@@ -74,6 +73,6 @@ def process_landsat_rasters(start_year, end_year):
 
 
 def process_terrain_rasters():
-    logger.debug(f"Processing TERRAIN rasters")
+    logger.debug("Processing TERRAIN rasters")
 
     merge_bands(TERRAIN_OUTPUT_DIR, TERRAIN_PREFIX, TERRAIN_BANDS)

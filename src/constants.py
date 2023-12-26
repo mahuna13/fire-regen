@@ -54,6 +54,12 @@ EBALIDAR_PATH = DATA_PATH / "EBA_lidar"
 
 ENV_VARS_NAMES = ["defMean", "SCCsoil", "fpar", "lightning", "srtm"]
 
+# Region of Interest paths
+SEKI_HULL = USER_PATH + "/data/shapefiles/seki_convex_hull.shp"
+SIERRAS_HULL = USER_PATH + "/data/shapefiles/sierras_convex_hull.shp"
+SEKI = USER_PATH + "/data/shapefiles/seki.shp"
+SIERRAS = USER_PATH + "/data/shapefiles/sierras.shp"
+
 # ---------------- API KEYS -------------------------
 PLANET_API_KEY = os.getenv("PLANET_API_KEY")
 
@@ -96,4 +102,5 @@ DB_NAME = os.getenv("DB_NAME")  # Database for GEDI shots
 DB_USER = os.getenv("DB_USER")
 DB_PASSWORD = os.getenv("DB_PASSWORD")
 DB_POSTGRES = "postgresql"
-DB_CONFIG = f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+DB_CONFIG = \
+    f"postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"

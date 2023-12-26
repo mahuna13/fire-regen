@@ -6,7 +6,7 @@ import pandas as pd
 def remove_outliers(df, column):
     Q1 = df[column].quantile(0.25)
     Q3 = df[column].quantile(0.75)
-    IQR = Q3 - Q1
+    IQR = Q3 - Q1  # noqa: F841
     filtered = df.query(
         f'(@Q1 - 1.5 * @IQR) <= {column} <= (@Q3 + 1.5 * @IQR)')
     return filtered
@@ -16,7 +16,9 @@ def AB_test(test: pd.Series, control: pd.Series, confidence=0.95, h0=0):
     # Remove outliers
 
     mu1, mu2 = test.mean(), control.mean()
-    se1, se2 = test.std() / np.sqrt(len(test)), control.std() / np.sqrt(len(control))
+    se1, se2 = test.std() /\
+        np.sqrt(len(test)), control.std() /\
+        np.sqrt(len(control))
     diff = mu1 - mu2
     se_diff = np.sqrt(test.var()/len(test) + control.var()/len(control))
     z_stats = (diff-h0)/se_diff
