@@ -116,7 +116,7 @@ def get_landsat_advanced(polygon, start_date):
     ee_end_date = ee_start_date.advance(1, 'year')
 
     ls8SR = ee.ImageCollection('LANDSAT/LC08/C02/T1_L2')
-    ls8 = ls8SR.map(mask_cloud_pixels)
+    ls8 = ls8SR.map(mask_cloud_pixels_landsat_8)
 
     landsat_ic = ls8.filterBounds(ee_geom) \
         .filterDate(ee_start_date, ee_end_date)
@@ -144,20 +144,6 @@ def get_landsat_advanced(polygon, start_date):
 
     landsat_ic.select(bands)
     return landsat_ic.select(bands).mean()
-    reducers = ee.Reducer.mean().combine(
-        ee.Reducer.stdDev(),
-        sharedInputs=True
-    )
-    # .combine(
-    #    ee.Reducer.median(),
-    #    sharedInputs=True
-    # )
-    return landsat_ic.reduce(reducers)
-    # mean_img=landsat_ic.reduce(ee.Reducer.mean())
-    # median_img=landsat_ic.reduce(ee.Reducer.median())
-    # return mean_img.addBands(median_img)
-    # return std_img.addBands(mean_img)
-    return std_img
 
 
 def add_NDVI_L5(image):
@@ -197,14 +183,22 @@ def add_SWIRS(image):
 
 def add_SVVI(image):
     stdev = image.addBands(
-        image.select("SR_B1", "SR_B2", "SR_B3", "SR_B4", "SR_B5",
-                     "SR_B7").reduce(ee.Reducer.stdDev()).rename("stdev_B1-B7")) \
-        .round().addBands(
-        image.select("SR_B4", "SR_B5", "SR_B7").reduce(
-            ee.Reducer.stdDev()).rename("stdev_B4-B7")
-        .round())
-    svvi = stdev.addBands(stdev.select("stdev_B1-B7").subtract(stdev.select("stdev_B4-B7"))
-                          .rename("SVVI"))
+        image.select(
+            "SR_B1",
+            "SR_B2",
+            "SR_B3",
+            "SR_B4",
+            "SR_B5",
+            "SR_B7"
+        ).reduce(ee.Reducer.stdDev()).rename("stdev_B1-B7")).round().addBands(
+        image.select(
+            "SR_B4",
+            "SR_B5",
+            "SR_B7"
+        ).reduce(ee.Reducer.stdDev()).rename("stdev_B4-B7").round())
+    svvi = stdev.addBands(
+        stdev.select("stdev_B1-B7").subtract
+        (stdev.select("stdev_B4-B7")).rename("SVVI"))
     return image.addBands(svvi.select("SVVI"))
 
 

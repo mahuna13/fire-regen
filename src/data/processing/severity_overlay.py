@@ -64,7 +64,7 @@ def overlay_with_mtbs_dnbr(input_path: str, output_path: str):
         if (os.path.exists(dir_path)):
             # MTBS for this fire exists.
             mtbs_files = os.listdir(dir_path)
-            r = re.compile(f"^{fire_id.lower()}.*_dnbr\.tif")
+            r = re.compile(f"^{fire_id.lower()}.*_dnbr\.tif")  # noqa: W605
             matches = list(filter(r.match, mtbs_files))
 
             if len(matches) == 1:

@@ -1,13 +1,11 @@
+import warnings
+
 import geopandas as gpd
 import pandas as pd
 import pyproj
-import sqlalchemy as db
 from sqlalchemy import create_engine, inspect
-
 from src.constants import DB_CONFIG, WGS84
 from src.utils.logging_util import get_logger
-
-import warnings
 
 logger = get_logger(__file__)
 
@@ -35,11 +33,13 @@ def gedi_sql_query(
         with warnings.catch_warnings():
             warnings.filterwarnings(
                 "ignore",
-                message="__len__ for multi-part geometries is deprecated and will be removed in Shapely 2.0",
+                message="__len__ for multi-part geometries is deprecated \
+                    and will be removed in Shapely 2.0",
             )
             conditions += [
                 "ST_Intersects(geometry, "
-                f"ST_GeomFromText('{geometry.to_wkt().values[0]}', {crs.to_epsg()}))"
+                f"ST_GeomFromText(\
+                    '{geometry.to_wkt().values[0]}', {crs.to_epsg()}))"
             ]
 
     # Combining conditions
@@ -51,7 +51,8 @@ def gedi_sql_query(
 
     if not force and condition == "" and limit is None:
         raise UserWarning(
-            "Warning! This will load the entire table. To proceed set `force`=True."
+            "Warning! This will load the entire table.\
+                To proceed set `force`=True."
         )
 
     sql_query = (
@@ -74,7 +75,8 @@ class GediDatabase(object):
             self.allowed_cols = {}
             for table_name in self.inspector.get_table_names():
                 allowed_cols = {
-                    col["name"] for col in self.inspector.get_columns(table_name)
+                    col["name"]
+                    for col in self.inspector.get_columns(table_name)
                 }
                 self.allowed_cols[table_name] = allowed_cols
 
@@ -96,9 +98,10 @@ class GediDatabase(object):
 
         if columns != "*":
             for column in columns:
-                if not column in self.allowed_cols[table_name]:
+                if column not in self.allowed_cols[table_name]:
                     raise ValueError(
-                        f"`{column}` not allowed. Must be one of {self.allowed_cols[table_name]}"
+                        f"`{column}` not allowed.\
+                            Must be one of {self.allowed_cols[table_name]}"
                     )
 
         if use_geopandas or geometry is not None:

@@ -35,7 +35,7 @@ def get_burn_severity_data() -> ee.ImageCollection:
     Returns ImageCollection with two bands, 'burn_severity' and 'burn_year',
     for continental US.
 
-    Each image in image collection represents severity at which each pixel 
+    Each image in image collection represents severity at which each pixel
     burned that year. 'burn_year' was placed as an additional band to
     fascilitate down the stream querying and processing.
     '''
@@ -50,7 +50,9 @@ def get_burn_severity_data() -> ee.ImageCollection:
 
 
 def get_burn_severity_data_for_year(year: int) -> ee.Image:
-    return get_burn_severity_data().filterDate(str(year), str(year + 1)).first()
+    return get_burn_severity_data().filterDate(str(year),
+                                               str(year + 1)
+                                               ).first()
 
 
 def get_burn_count_data(ic_severity: ee.ImageCollection) -> ee.Image:

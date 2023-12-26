@@ -1,11 +1,12 @@
-import ee
-from functools import reduce
+import time
+
 import geopandas as gpd
 import numpy as np
+import pandas as pd
 import shapely
 from src.utils.logging_util import get_logger
-import time
-import pandas as pd
+
+import ee
 
 GDRIVE_FOLDER_NAME = 'fire_regen'
 logger = get_logger(__file__)
@@ -18,7 +19,13 @@ def gdf_to_ee_polygon(gdf_polygon: shapely.Polygon) -> ee.Geometry.Polygon:
     return ee.Geometry.Polygon(coords)
 
 
-def save_image_to_drive(image: ee.Image, polygon: shapely.Polygon, img_name: str, scale: int, debug: bool = False, subfolder=""):
+def save_image_to_drive(
+        image: ee.Image,
+        polygon: shapely.Polygon,
+        img_name: str,
+        scale: int,
+        debug: bool = False,
+        subfolder=""):
     ''' Creates a task to save ee.Image to Google Drive as a tif. '''
     ee_geom = gdf_to_ee_polygon(polygon)
     task = ee.batch.Export.image.toDrive(**{
@@ -42,7 +49,11 @@ def save_image_to_drive(image: ee.Image, polygon: shapely.Polygon, img_name: str
     logger.debug(ee.data.listOperations())
 
 
-def save_image_to_drive_per_band(image: ee.Image, polygon: shapely.Polygon, img_name: str, scale: int):
+def save_image_to_drive_per_band(
+        image: ee.Image,
+        polygon: shapely.Polygon,
+        img_name: str,
+        scale: int):
     band_list = image.bandNames().getInfo()
     for i in range(len(band_list)):
         band_name = band_list[i]

@@ -1,12 +1,12 @@
 import geopandas as gpd
 import pandas as pd
 from fastai.tabular.all import save_pickle
-from src.constants import DATA_PATH, USER_PATH
+from src.constants import DATA_PATH, SIERRAS_HULL, SEKI_HULL
 from src.data import fire_perimeters
 
 # Fetch simplified regions of interest.
-SEKI = gpd.read_file(f"{USER_PATH}/data/shapefiles/seki_convex_hull.shp")
-SIERRAS = gpd.read_file(f"{USER_PATH}/data/shapefiles/sierras_convex_hull.shp")
+SEKI = gpd.read_file(SEKI_HULL)
+SIERRAS = gpd.read_file(SIERRAS_HULL)
 
 
 def MTBS_PERIMETERS_TRIMMED(distance):
