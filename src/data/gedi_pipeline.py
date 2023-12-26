@@ -55,8 +55,9 @@ def stage_7_filter_land_cover_l4a_sierras(kernel: int, save: bool = True):
     # gedi_unburned.drop(columns=columns_to_drop, inplace=True)
 
     if save:
-        _save_df_as_pickle("sierras_combined_shots_stage_7_{kernel}x{kernel}_burned.pkl",
-                           gedi_burned)
+        _save_df_as_pickle(
+            "sierras_combined_shots_stage_7_{kernel}x{kernel}_burned.pkl",
+            gedi_burned)
 
         # _save_df_as_pickle("sierras_combined_shots_stage_7_{kernel}x{kernel}_unburned.pkl",
         #    gedi_unburned)
@@ -95,8 +96,9 @@ def stage_6_match_land_cover_l4a_sierras(kernel: int, save: bool = True):
     #    2022, gedi_unburned, 3)
 
     if save:
-        _save_df_as_pickle("sierras_combined_shots_stage_6_{kernel}x{kernel}_burned.pkl",
-                           gedi_burned)
+        _save_df_as_pickle(
+            "sierras_combined_shots_stage_6_{kernel}x{kernel}_burned.pkl",
+            gedi_burned)
 
         # _save_df_as_pickle("sierras_combined_shots_stage_6_{kernel}x{kernel}_unburned.pkl",
         #    gedi_unburned)
@@ -125,10 +127,12 @@ def stage_5_filter_for_regrowth_l4a_sierras(kernel: int, save: bool = True):
     gedi_burned = filter_shots_for_regrowth_analysis(gedi_burned)
 
     if save:
-        _save_df_as_pickle("sierras_combined_shots_stage_5_{kernel}x{kernel}_burned.pkl",
-                           gedi_burned)
-        _save_df_as_pickle("sierras_combined_shots_stage_5_{kernel}x{kernel}_unburned.pkl",
-                           gedi_unburned)
+        _save_df_as_pickle(
+            "sierras_combined_shots_stage_5_{kernel}x{kernel}_burned.pkl",
+            gedi_burned)
+        _save_df_as_pickle(
+            "sierras_combined_shots_stage_5_{kernel}x{kernel}_unburned.pkl",
+            gedi_unburned)
 
     return gedi_burned, gedi_unburned
 
@@ -157,7 +161,7 @@ def load_stage_4(kernel: int):
     gedi_burned = gedi_utils.get_gedi_as_gdp(
         f"sierras_combined_shots_stage_4_{kernel}x{kernel}_burned.pkl")
 
-    gedi_unburned = ggedi_utils.et_gedi_as_gdp(
+    gedi_unburned = gedi_utils.et_gedi_as_gdp(
         f"sierras_combined_shots_stage_4_{kernel}x{kernel}_unburned.pkl")
 
     return gedi_burned, gedi_unburned
@@ -171,10 +175,12 @@ def stage_4_filter_burns_l4a_sierras(kernel: int, save: bool = True):
     gedi_burned, gedi_unburned = filter_burn_areas(gedi, kernel)
 
     if save:
-        _save_df_as_pickle("sierras_combined_shots_stage_4_{kernel}x{kernel}_burned.pkl",
-                           gedi_burned)
-        _save_df_as_pickle("sierras_combined_shots_stage_4_{kernel}x{kernel}_unburned.pkl",
-                           gedi_unburned)
+        _save_df_as_pickle(
+            "sierras_combined_shots_stage_4_{kernel}x{kernel}_burned.pkl",
+            gedi_burned)
+        _save_df_as_pickle(
+            "sierras_combined_shots_stage_4_{kernel}x{kernel}_unburned.pkl",
+            gedi_unburned)
 
 
 def filter_burn_areas(gedi: gpd.GeoDataFrame, kernel: int):
