@@ -2,6 +2,7 @@ from src.constants import GEDI_INTERMEDIATE_PATH
 from src.data.pipelines.extract_gedi_data import SIERRAS_GEDI_ID_COLUMNS
 from src.data.processing import burn_areas_overlay as ba
 from src.data.processing import burn_boundaries_overlay as bb
+from src.data.processing import disturbance_overlays as da
 from src.data.processing import raster_overlays
 from src.data.processing import severity_overlay as se
 
@@ -49,3 +50,7 @@ if __name__ == '__main__':
         SIERRAS_GEDI_ID_COLUMNS, get_output_path("dynamic_world_overlay.pkl"))
 
     # TODO: Add Land Cover
+
+    # Disturbances Overlay
+    da.overlay_with_disturbances(SIERRAS_GEDI_ID_COLUMNS,
+                                 get_output_path("disturbances_overlay.pkl"))
