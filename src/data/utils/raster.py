@@ -1,8 +1,14 @@
+import os
+
 import numpy as np
 import pandas as pd
 import rasterio as rio
 import rioxarray as riox
+from rasterio.merge import merge
 from rasterio.warp import Resampling, calculate_default_transform, reproject
+from src.utils.logging_util import get_logger
+
+logger = get_logger(__file__)
 
 pd.options.mode.chained_assignment = None  # default='warn'
 
@@ -29,6 +35,7 @@ class RasterSampler:
         df = df.loc[valid]
 
         # Calculate stats for each band. Attach to df.
+        all_bands = []
         for band_idx in range(len(self.bands)):
             band_name = self.bands[band_idx]
             band_values = np.vstack(
@@ -40,10 +47,16 @@ class RasterSampler:
                 # Could be helpful to get the values from all 4 cells.
                 df[f'{band_name}_2x2'] = list(band_values)
 
-            df[f'{band_name}_mean'] = np.mean(band_values, axis=1)
-            df[f'{band_name}_std'] = np.std(band_values, axis=1)
-            df[f'{band_name}_median'] = np.median(band_values, axis=1)
-        return df
+            new_df = pd.DataFrame(
+                index=df.index,
+                data={
+                    f'{band_name}_mean': np.mean(band_values, axis=1),
+                    f'{band_name}_std': np.std(band_values, axis=1),
+                    f'{band_name}_median': np.median(band_values, axis=1)
+                })
+            all_bands.append(new_df)
+
+        return pd.concat([df] + all_bands, axis=1)
 
     def sample_3x3(self, df: pd.DataFrame, x_coord: str, y_coord: str,
                    debug: bool = False):
@@ -187,3 +200,32 @@ def reproject_raster(file_path: str, out_file_path: str,
                     dst_transform=transform,
                     dst_crs=dst_crs,
                     resampling=Resampling.nearest)
+
+
+def merge_raster_tiles(path, output_file_path):
+    if os.path.exists(output_file_path):
+        # We've merged the tiles already, early exit.
+        return
+
+    raster_files = list(path.iterdir())
+
+    logger.debug('Load tif tiles')
+    raster_to_mosaic = []
+    for tif in raster_files:
+        raster = rio.open(tif)
+        raster_to_mosaic.append(raster)
+
+    logger.debug('Merge rasters.')
+    mosaic, output = merge(raster_to_mosaic)
+
+    logger.debug('Write output')
+    output_meta = raster.meta.copy()
+    output_meta.update(
+        {"driver": "GTiff",
+            "height": mosaic.shape[1],
+            "width": mosaic.shape[2],
+            "transform": output,
+         }
+    )
+    with rio.open(output_file_path, "w", **output_meta) as m:
+        m.write(mosaic)

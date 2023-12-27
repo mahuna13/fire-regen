@@ -2,7 +2,7 @@ import geopandas as gpd
 import pandas as pd
 from fastai.tabular.all import load_pickle, save_pickle
 from src import constants
-from src.data.gedi_database import GediDatabase
+from src.data.gedi.gedi_database import GediDatabase
 from src.utils.logging_util import get_logger
 
 logger = get_logger(__file__)

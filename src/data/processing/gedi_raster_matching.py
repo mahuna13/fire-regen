@@ -1,10 +1,7 @@
-import os
 from pathlib import Path
 
 import geopandas as gpd
 import pandas as pd
-import rasterio as rio
-from rasterio.merge import merge
 from src.constants import DATA_PATH
 from src.data.utils import raster
 from src.utils.logging_util import get_logger
@@ -134,7 +131,7 @@ def merge_landsat_tiles_for_year(year):
     path = Path(f"{DATA_PATH}/rasters/LANDSAT/{year}")
     output_file_path = f"{path}/landsat{landsat}_{year}.tif"
 
-    merge_raster_tiles(path, output_file_path)
+    raster.merge_raster_tiles(path, output_file_path)
 
 
 def merge_dynamic_world_tiles_for_year(year):
@@ -143,33 +140,4 @@ def merge_dynamic_world_tiles_for_year(year):
     output_file_path = \
         f"{DATA_PATH}/rasters/DYNAMIC_WORLD/dynamic_world_{year}.tif"
 
-    merge_raster_tiles(path, output_file_path)
-
-
-def merge_raster_tiles(path, output_file_path):
-    if os.path.exists(output_file_path):
-        # We've merged the tiles already, early exit.
-        return
-
-    raster_files = list(path.iterdir())
-
-    logger.debug('Load tif tiles')
-    raster_to_mosaic = []
-    for tif in raster_files:
-        raster = rio.open(tif)
-        raster_to_mosaic.append(raster)
-
-    logger.debug('Merge rasters.')
-    mosaic, output = merge(raster_to_mosaic)
-
-    logger.debug('Write output')
-    output_meta = raster.meta.copy()
-    output_meta.update(
-        {"driver": "GTiff",
-            "height": mosaic.shape[1],
-            "width": mosaic.shape[2],
-            "transform": output,
-         }
-    )
-    with rio.open(output_file_path, "w", **output_meta) as m:
-        m.write(mosaic)
+    raster.merge_raster_tiles(path, output_file_path)

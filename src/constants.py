@@ -55,10 +55,10 @@ EBALIDAR_PATH = DATA_PATH / "EBA_lidar"
 ENV_VARS_NAMES = ["defMean", "SCCsoil", "fpar", "lightning", "srtm"]
 
 # Region of Interest paths
-SEKI_HULL = USER_PATH + "/data/shapefiles/seki_convex_hull.shp"
-SIERRAS_HULL = USER_PATH + "/data/shapefiles/sierras_convex_hull.shp"
-SEKI = USER_PATH + "/data/shapefiles/seki.shp"
-SIERRAS = USER_PATH + "/data/shapefiles/sierras.shp"
+SEKI_HULL = f"{USER_PATH}/data/shapefiles/seki_convex_hull.shp"
+SIERRAS_HULL = f"{USER_PATH}/data/shapefiles/sierras_convex_hull.shp"
+SEKI = f"{USER_PATH}/data/shapefiles/seki.shp"
+SIERRAS = f"{USER_PATH}/data/shapefiles/sierras.shp"
 
 # ---------------- API KEYS -------------------------
 PLANET_API_KEY = os.getenv("PLANET_API_KEY")
