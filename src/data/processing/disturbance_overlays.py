@@ -24,7 +24,6 @@ def overlay_with_disturbances(input_path: str, output_path: str):
     logger.info("Starting raster mathching")
     raster_files = list(Path(da.DATASET_PATH).iterdir())
     for file_name in raster_files:
-        # logger.info(f"Matching with file: {file_name}")
         raster_bounds = box(*rio.open(file_name).bounds)
         bounds_gdf = gpd.GeoDataFrame(
             index=[0],
@@ -37,7 +36,7 @@ def overlay_with_disturbances(input_path: str, output_path: str):
         if len(gedi_within) == 0:
             continue
 
-        print(f"Matching {len(gedi_within)} gedi shots.")
+        logger.info(f"Matching {len(gedi_within)} gedi shots.")
         gedi_to_be_matched.drop(gedi_within.index, inplace=True)
 
         matched = gedi_raster_matching.sample_raster(
