@@ -2,18 +2,20 @@ import geopandas as gpd
 import pandas as pd
 from fastai.tabular.all import save_pickle
 from src.constants import DATA_PATH, SIERRAS_HULL, SEKI_HULL
-from src.data import fire_perimeters
 
 # Fetch simplified regions of interest.
 SEKI = gpd.read_file(SEKI_HULL)
 SIERRAS = gpd.read_file(SIERRAS_HULL)
 
 
+def MTBS_BOUNDARY_BUFFER(distance):
+    return f"{DATA_PATH}/mtbs/perimeters_{distance}m_buffers.pkl"
+
+
 def MTBS_PERIMETERS_TRIMMED(distance):
     return f"{DATA_PATH}/mtbs/perimeters_{distance}m_trimmed.pkl"
 
 
-MTBS_FIRES_TRIMMED_10m = MTBS_PERIMETERS_TRIMMED(10)
 MTBS_INDIVIDUAL_FIRES = f"{DATA_PATH}/mtbs/all_fires/mtbs"
 
 
@@ -21,6 +23,10 @@ class MTBSFirePerimetersDB:
     def __init__(self, region: gpd.GeoDataFrame, crs=4326):
         # MTBS dataset is in 4269 CRS.
         perimeters = gpd.read_file(f"{DATA_PATH}/mtbs/mtbs_perims_DD.shp")
+
+        # Drop CLAREMONT fire, because it's the exact duplicate of North
+        # Complex fire.
+        perimeters = perimeters[perimeters.Event_ID != 'CA3985812091220200817']
 
         # Convert region to the same geometry.
         region_4269 = region.to_crs(4269)
@@ -88,7 +94,7 @@ class MTBSFire:
 
 
 def get_mtbs_perimeters_for_sierras():
-    mtbs_db = fire_perimeters.MTBSFirePerimetersDB(SIERRAS)
+    mtbs_db = MTBSFirePerimetersDB(SIERRAS)
 
     columns = [
         'Event_ID',
@@ -112,6 +118,29 @@ def get_mtbs_perimeters_for_sierras():
     mtbs_fires['High_T_adj'] = mtbs_fires.High_T - mtbs_fires.dNBR_offst
 
     return mtbs_fires
+
+
+def extract_buffers_around_perimeters(
+    distance: int,
+    save: bool = True
+) -> gpd.GeoDataFrame:
+    sierra_perimeters = get_mtbs_perimeters_for_sierras()
+    original_crs = sierra_perimeters.crs
+
+    # Convert to a projected CRS.
+    perimeters_projected = sierra_perimeters.to_crs(epsg=3310)
+
+    # Extract the buffers.
+    boundary_buffers = perimeters_projected.boundary.buffer(distance)
+
+    # Save.
+    boundary_buffers_gdf = gpd.GeoDataFrame(
+        perimeters_projected, geometry=boundary_buffers).to_crs(original_crs)
+
+    if save:
+        save_pickle(MTBS_BOUNDARY_BUFFER(distance), boundary_buffers_gdf)
+
+    return boundary_buffers_gdf
 
 
 # Trims the outside area around the fire, to exclude locations near the

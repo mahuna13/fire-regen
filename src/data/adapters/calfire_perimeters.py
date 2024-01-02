@@ -7,24 +7,17 @@ import geopandas as gpd
 import pandas as pd
 from fastai.tabular.all import save_pickle
 from src.constants import DATA_PATH, USER_PATH, SEKI_HULL, SIERRAS_HULL
-from src.data import fire_perimeters
 
 # Fetch simplified regions of interest.
 SEKI = gpd.read_file(SEKI_HULL)
 SIERRAS = gpd.read_file(SIERRAS_HULL)
 
 
-def CALFIRE_BOUNDARY_BUFFER(distance):
-    return f"{DATA_PATH}/calfire/perimeters_{distance}m_buffers.pkl"
-
-
-def CALFIRE_PERIMETERS_TRIMMED(distance):
-    return f"{DATA_PATH}/calfire/perimeters_{distance}m_trimmed.pkl"
+def CALFIRE_BURN_AREA_AUGMENTED(distance):
+    return f"{DATA_PATH}/calfire/perimeters_{distance}m_augmented.pkl"
 
 
 CALFIRE_PERIMETERS_PATH = f"{USER_PATH}/data/fire_perimeters.gdb/"
-CALFIRE_BOUNDARY_BUFFER_10m = CALFIRE_BOUNDARY_BUFFER(10)
-CALFIRE_BURN_AREA_TRIMMED_10m = CALFIRE_PERIMETERS_TRIMMED(10)
 
 
 class FirePerimetersDB:
@@ -152,55 +145,34 @@ class Fire:
 
 
 def get_fire_perimeters_for_sierras():
-    calfire_db = fire_perimeters.FirePerimetersDB(CALFIRE_PERIMETERS_PATH)
-    return fire_perimeters.FirePerimeters(
-        calfire_db).filter_for_region(SIERRAS)
+    calfire_db = FirePerimetersDB(CALFIRE_PERIMETERS_PATH)
+    perimeters = FirePerimeters(
+        calfire_db).filter_for_region(SIERRAS).perimeters
+
+    # Convert area to acres.
+    perimeters["Shape_Area_Acres"] = perimeters.Shape_Area / 4046.8564224
+    return perimeters
 
 
-def extract_buffers_around_perimeters(
+def augment_fire_area(
     distance: int,
     save: bool = True
 ) -> gpd.GeoDataFrame:
     sierra_perimeters = get_fire_perimeters_for_sierras()
-    original_crs = sierra_perimeters.perimeters.crs
+    original_crs = sierra_perimeters.crs
 
     # Convert to a projected CRS.
-    perimeters_projected = sierra_perimeters.perimeters.to_crs(epsg=3310)
-
-    # Extract the buffers.
-    boundary_buffers = perimeters_projected.boundary.buffer(distance)
-
-    # Save.
-    boundary_buffers_gdf = gpd.GeoDataFrame(
-        perimeters_projected, geometry=boundary_buffers).to_crs(original_crs)
-
-    if save:
-        save_pickle(CALFIRE_BOUNDARY_BUFFER(distance), boundary_buffers_gdf)
-
-    return boundary_buffers_gdf
-
-
-# Trims the outside area around the fire, to exclude locations near the
-# boundary to improve accuracy.
-def trim_fire_area(
-    distance: int,
-    save: bool = True
-) -> gpd.GeoDataFrame:
-    sierra_perimeters = get_fire_perimeters_for_sierras()
-    original_crs = sierra_perimeters.perimeters.crs
-
-    # Convert to a projected CRS.
-    perimeters_projected = sierra_perimeters.perimeters.to_crs(epsg=3310)
+    perimeters_projected = sierra_perimeters.to_crs(epsg=3310)
 
     # Extract the buffers around fire boundary.
     boundary_buffers = perimeters_projected.boundary.buffer(distance)
 
     # Trim area to exclude the area around fire perimeter.
-    trimmed = perimeters_projected.difference(boundary_buffers)
-    trimmed_gdf = gpd.GeoDataFrame(
-        perimeters_projected, geometry=trimmed).to_crs(original_crs)
+    augmented = perimeters_projected.union(boundary_buffers)
+    augmented_gdf = gpd.GeoDataFrame(
+        perimeters_projected, geometry=augmented).to_crs(original_crs)
 
     if save:
-        save_pickle(CALFIRE_PERIMETERS_TRIMMED(distance), trimmed_gdf)
+        save_pickle(CALFIRE_BURN_AREA_AUGMENTED(distance), augmented_gdf)
 
-    return trimmed_gdf
+    return augmented_gdf
