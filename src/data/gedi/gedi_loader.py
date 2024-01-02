@@ -58,8 +58,7 @@ ID_COLUMNS = [
     "shot_number",
     "longitude",
     "latitude",
-    "gedi_year",
-    "gedi_month"
+    "absolute_time"
 ]
 
 

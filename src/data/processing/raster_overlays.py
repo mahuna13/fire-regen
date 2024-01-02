@@ -34,6 +34,7 @@ def overlay_terrain(input_path: str, output_path: str):
 
 def overlay_landsat(input_path: str, output_path: str):
     gedi_shots = load_pickle(input_path)
+    gedi_shots['gedi_year'] = gedi_shots.absolute_time.dt.year
 
     gedi_df_combined_years = []
     for year in range(2019, 2023):
@@ -58,6 +59,7 @@ def overlay_landsat(input_path: str, output_path: str):
 
 def overlay_dynamic_world(input_path: str, output_path: str):
     gedi_shots = load_pickle(input_path)
+    gedi_shots['gedi_year'] = gedi_shots.absolute_time.dt.year
 
     gedi_df_combined_years = []
     for year in range(2019, 2024):
