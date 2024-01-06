@@ -20,6 +20,25 @@ def get_gedi_shots(input_path: str) -> gpd.GeoDataFrame:
                             crs=constants.WGS84)
 
 
+# We will use LCMS dataset, because it's the easiest one to use through EE.
+def overlay_land_cover(input_path: str, output_path: str, file_name: str):
+    gedi_shots = load_pickle(input_path)
+    START = 1985
+    END = 2022
+
+    for year in range(START, END):
+        logger.info(f"Overlaying land cover for year {year}.")
+        # LCSM is at 30m resolution, so we match raster on a 2x2 kernel.
+        overlay = gedi_raster_matching.match_landcover(year, gedi_shots, 2)
+        overlay["lc_year"] = year
+        overlay = overlay.drop(columns=["longitude", "latitude",
+                                        "absolute_time", "land_cover_mean"]
+                               ).astype({"land_cover_median": "int"})
+
+        # Save the intermediate result.
+        save_pickle(f"{output_path}/{file_name}_{year}.pkl", overlay)
+
+
 def overlay_terrain(input_path: str, output_path: str):
     gedi_shots = load_pickle(input_path)
 
@@ -59,12 +78,10 @@ def overlay_landsat(input_path: str, output_path: str):
 
 def overlay_dynamic_world(input_path: str, output_path: str):
     gedi_shots = load_pickle(input_path)
-    gedi_shots['gedi_year'] = gedi_shots.absolute_time.dt.year
 
     gedi_df_combined_years = []
     for year in range(2019, 2024):
-        gedi_for_year = gedi_shots[gedi_shots.gedi_year ==
-                                   year][OVERLAY_COLUMNS]
+        gedi_for_year = gedi_shots[gedi_shots.absolute_time.dt.year == year]
 
         logger.debug(f'Match with Dynamic World for year {year - 1}')
         raster = gedi_raster_matching.get_dw_raster_sampler(year - 1)

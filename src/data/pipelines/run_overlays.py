@@ -1,5 +1,7 @@
 import os
 
+import pandas as pd
+from fastai.tabular.all import load_pickle, save_pickle
 from src.constants import GEDI_INTERMEDIATE_PATH
 from src.data.pipelines.extract_gedi_data import SIERRAS_GEDI_ID_COLUMNS
 from src.data.processing import all_fires_overlay as fa
@@ -12,6 +14,14 @@ from src.utils.logging_util import get_logger
 logger = get_logger(__file__)
 
 OVERLAYS_PATH = f"{GEDI_INTERMEDIATE_PATH}/overlays"
+
+# TODO: put file names for each overlay into constants accessible elsewhere.
+DYNAMIC_WORLD = f"{OVERLAYS_PATH}/dynamic_world_overlay.pkl"
+RECENT_LAND_COVER = f"{OVERLAYS_PATH}/recent_land_cover.pkl"
+
+
+def LANDCOVER(year):
+    return f"{OVERLAYS_PATH}/land_cover_overlay_{year}.pkl"
 
 
 def get_output_path(file_name: str):
@@ -28,6 +38,29 @@ def run_overlay(overlay_fn, file_name, override=False):
 
     overlay_fn(SIERRAS_GEDI_ID_COLUMNS, output_path)
     logger.info("Done! \n")
+
+
+def overlay_recent_land_cover():
+    # Combine LC with dynamic world data, to provide two different sources for
+    # land cover.
+
+    # Load shots already combined with dynamic world.
+    gedi_shots = load_pickle(DYNAMIC_WORLD)
+
+    gedi_df_combined_years = []
+    for year in range(2019, 2024):
+        logger.info(f"Consolidate land cover for year {year}.")
+        gedi_for_year = gedi_shots[gedi_shots.absolute_time.dt.year == year]
+
+        lc_df = load_pickle(LANDCOVER(min(2021, year - 1)))
+
+        joined_lc = gedi_for_year.join(
+            lc_df[["land_cover_std", "land_cover_median"]], how="left")
+
+        gedi_df_combined_years.append(joined_lc)
+
+    overlay = pd.concat(gedi_df_combined_years)
+    save_pickle(RECENT_LAND_COVER, overlay)
 
 
 if __name__ == '__main__':
