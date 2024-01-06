@@ -73,6 +73,17 @@ def match_burn_raster(
     return sample_raster(burn_raster, gedi, kernel)
 
 
+def match_landcover(
+    year: int,
+    df: gpd.GeoDataFrame,
+    kernel: int
+) -> gpd.GeoDataFrame:
+    lcsm_raster = raster.RasterSampler(
+        LCSM_RASTER(year), LAND_COVER_BANDS)
+
+    return sample_raster(lcsm_raster, df, kernel)
+
+
 def match_burn_landcover(
     gedi: gpd.GeoDataFrame,
     kernel: int
@@ -97,10 +108,7 @@ def match_landcover_for_year(
     else:
         raster_year = year - 1
 
-    lcsm_raster = raster.RasterSampler(
-        LCSM_RASTER(raster_year), LAND_COVER_BANDS)
-
-    return sample_raster(lcsm_raster, df, kernel)
+    return match_landcover(raster_year, df, kernel)
 
 
 def match_terrain(
