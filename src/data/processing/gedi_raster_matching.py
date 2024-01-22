@@ -42,6 +42,12 @@ def get_landsat_raster_sampler(year):
     return raster.RasterSampler(raster_path, bands)
 
 
+def get_ndvi_raster_sampler(year):
+    raster_path = LANDSAT_RASTER(year)
+    bands_map = get_ndvi_band(year)
+    return raster.RasterSampler(raster_path, bands_map=bands_map)
+
+
 def get_dw_raster_sampler(year):
     raster_path = DYNAMIC_WORLD_RASTER(year)
     return raster.RasterSampler(raster_path, DW_BANDS)
@@ -62,6 +68,14 @@ def get_landsat_bands(year):
         return LANDSAT5_BANDS
     else:
         return LANDSAT8_BANDS
+
+
+def get_ndvi_band(year):
+    landsat_num = which_landsat(year)
+    if landsat_num == 5 or landsat_num == 7:
+        return {6: "ndvi"}
+    else:
+        return {7: "ndvi"}
 
 
 def match_burn_raster(
@@ -123,14 +137,17 @@ def match_terrain(
 def sample_raster(
     raster_sampler: raster.RasterSampler,
     df: gpd.GeoDataFrame,
-    kernel: int
+    kernel: int,
+    expanded: bool = False
 ):
+    LAT = 'latitude'
+    LON = 'longitude'
     if kernel == 1:
-        return raster_sampler.sample(df, 'longitude', 'latitude')
+        return raster_sampler.sample(df, LON, LAT)
     elif kernel == 2:
-        return raster_sampler.sample_2x2(df, 'longitude', 'latitude')
+        return raster_sampler.sample_2x2(df, LON, LAT, expanded=expanded)
     elif kernel == 3:
-        return raster_sampler.sample_3x3(df, 'longitude', 'latitude')
+        return raster_sampler.sample_3x3(df, LON, LAT)
 
 
 def merge_landsat_tiles_for_year(year):
