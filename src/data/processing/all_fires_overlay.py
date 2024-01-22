@@ -5,8 +5,9 @@
 # GEDI's geolocation uncertainty.
 
 import pandas as pd
-from fastai.tabular.all import load_pickle, save_pickle
+from fastai.tabular.all import load_pickle
 from src.data.adapters import calfire_perimeters as cp
+from src.data.processing import overlay
 from src.data.utils import gedi_utils
 from src.utils.logging_util import get_logger
 
@@ -14,16 +15,16 @@ logger = get_logger(__file__)
 
 
 def overlay_with_all_fires(
-        input_path: str,
-        output_path: str,
+        df: pd.DataFrame,
         distance: int = 30):
-    gedi_shots = gedi_utils.get_gedi_shots(input_path)
+    df = overlay.validate_input(df)
+    gdf = gedi_utils.convert_to_geo_df(df)
 
     burn_areas = load_pickle(cp.CALFIRE_BURN_AREA_AUGMENTED(distance))
 
-    intersection = gedi_shots.sjoin(burn_areas,
-                                    how="left",
-                                    predicate="within")
+    intersection = gdf.sjoin(burn_areas,
+                             how="left",
+                             predicate="within")
 
     burned_shots = intersection[intersection.index_right.notna()].astype({
         'YEAR_': 'int64'})
@@ -52,14 +53,4 @@ def overlay_with_all_fires(
     burned_shots.drop(columns=["index_right"], inplace=True)
 
     # Save.
-    overlay = _save_overlay(burned_shots, output_path)
-    return overlay
-
-
-def _save_overlay(df: pd.DataFrame, output_path: str):
-    df = df.drop(
-        columns=["longitude", "latitude", "geometry", "absolute_time"])
-
-    logger.info("Saving the results.")
-    save_pickle(output_path, df)
-    return df
+    return burned_shots
