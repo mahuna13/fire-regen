@@ -37,6 +37,7 @@ EARTHDATA_PASSWORD = os.getenv("EARTHDATA_PASSWORD")
 
 GEDI_PATH = DATA_PATH / "GEDI"
 GEDI_INTERMEDIATE_PATH = DATA_PATH / "gedi_intermediate"
+INTERMEDIATE_RESULTS = DATA_PATH / "intermediate"
 
 
 def gedi_product_path(product):
