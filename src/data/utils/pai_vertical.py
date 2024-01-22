@@ -42,7 +42,8 @@ def pad_all_pai_z_to_constant_length(df: pd.DataFrame):
 def pad_array(df: pd.DataFrame, column: str, constant_values=(0, 0)):
     def pad_numpy_array(df):
         pai_array = df[column]
-        return np.pad(pai_array, (0, 30-pai_array.size), 'constant', constant_values=constant_values)
+        return np.pad(pai_array, (0, 30-pai_array.size), 'constant',
+                      constant_values=constant_values)
 
     df[f'{column}_padded'] = df.apply(pad_numpy_array, axis=1)
     return df
@@ -73,15 +74,6 @@ def calculate_pai_z_percentage(df: pd.DataFrame):
 def maximum_pai_height(df: pd.DataFrame):
     df['pai_max_height'] = df.apply(lambda row: len(row.pai_z) * 5, axis=1)
     return df
-
-# TODO: Consider doing this if needed.
-
-
-def first_element_larger_than(l: list[float], t: float):
-    for i in range(len(l)):
-        if l[i] <= t:
-            return i
-    return
 
 
 def transform_pai_z_2(df: pd.DataFrame):
