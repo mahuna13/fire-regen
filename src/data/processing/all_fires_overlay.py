@@ -41,12 +41,12 @@ def overlay_with_all_fires(
     # Assign total number of all fires for each GEDI shot.
     fire_count_col = "fire_count"
     burned_shots[fire_count_col] = burned_shots.groupby(
-        gedi_utils.INDEX).index_right.count()
+        overlay.INDEX).index_right.count()
 
     recent_fire_count_col = "recent_fire_count"
     burned_shots[recent_fire_count_col] = 0
     recent_fire_count = recent_burned_shots.groupby(
-        gedi_utils.INDEX).YEAR_.count()
+        overlay.INDEX).YEAR_.count()
     burned_shots.loc[recent_burned_shots.index,
                      recent_fire_count_col] = recent_fire_count
 

@@ -31,7 +31,7 @@ def overlay_with_boundary_buffers(
 
     shots_around_boundaries = intersection[intersection.index_right.notna()]
     shots_around_boundaries["most_recent_boundary"] = \
-        shots_around_boundaries.groupby(gedi_utils.INDEX).Ig_Year.max()
+        shots_around_boundaries.groupby(overlay.INDEX).Ig_Year.max()
 
     shots_around_boundaries.drop(columns=["index_right"], inplace=True)
 

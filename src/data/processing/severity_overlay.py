@@ -52,11 +52,11 @@ def overlay_with_mtbs_fires(
     fire_count_col = "fire_count"
     unburned_shots[fire_count_col] = 0
     burned_shots[fire_count_col] = burned_shots.groupby(
-        gedi_utils.INDEX).index_right.count()
+        overlay.INDEX).index_right.count()
 
     # For each burned shot, only keep the most recent fire details.
     most_recent_fire_idx = burned_shots.groupby(
-        gedi_utils.INDEX
+        overlay.INDEX
     ).fire_ig_date.transform(max) == burned_shots.fire_ig_date
     most_recent_fires = burned_shots[most_recent_fire_idx]
 

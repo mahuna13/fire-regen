@@ -1,7 +1,8 @@
+from typing import Callable
+
 import geopandas as gpd
 import numpy as np
 from sklearn.neighbors import BallTree
-from typing import Callable
 
 
 def nn_control(

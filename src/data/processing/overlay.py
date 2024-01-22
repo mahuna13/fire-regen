@@ -1,6 +1,6 @@
 import pandas as pd
-from src.data.gedi import gedi_loader
 from src.constants import INTERMEDIATE_RESULTS
+from src.data.gedi import gedi_loader
 
 INDEX = 'shot_number'
 OVERLAYS_PATH = f"{INTERMEDIATE_RESULTS}/overlays"

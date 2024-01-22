@@ -1,10 +1,9 @@
 # This module is only applicable for shots that burned, and for which we know
 # the year of of the fire.
 
-from src.data.processing import overlay
 import pandas as pd
+from src.data.processing import gedi_raster_matching, overlay
 from src.utils.logging_util import get_logger
-from src.data.processing import gedi_raster_matching
 
 logger = get_logger(__file__)
 
