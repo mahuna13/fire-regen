@@ -26,7 +26,7 @@ def transform_pai_z_array_to_np(df: pd.DataFrame):
     and trim zeros.
     '''
     df['pai_z_np'] = df.apply(lambda row: np.flip(np.trim_zeros(
-        np.array(row.pai_z[1:-1].split(", ")).astype(float))), axis=1)
+        np.array(row.pai_z))), axis=1)
     return df
 
 
@@ -39,6 +39,15 @@ def pad_all_pai_z_to_constant_length(df: pd.DataFrame):
     return df
 
 
+def pad_array(df: pd.DataFrame, column: str, constant_values=(0, 0)):
+    def pad_numpy_array(df):
+        pai_array = df[column]
+        return np.pad(pai_array, (0, 30-pai_array.size), 'constant', constant_values=constant_values)
+
+    df[f'{column}_padded'] = df.apply(pad_numpy_array, axis=1)
+    return df
+
+
 def calculate_pai_z_delta(df: pd.DataFrame):
     def calc_delta(df):
         pai_array = df.pai_z_padded
@@ -48,4 +57,39 @@ def calculate_pai_z_delta(df: pd.DataFrame):
         return pai_delta
 
     df['pai_z_delta_np'] = df.apply(calc_delta, axis=1)
+    return df
+
+
+def calculate_pai_z_percentage(df: pd.DataFrame):
+    def calc_percentage(df):
+        pai_array = df.pai_z_np
+        pai = df.pai
+        return np.around((pai_array / pai) * 100, 1)
+
+    df['pai_z_percent'] = df.apply(calc_percentage, axis=1)
+    return df
+
+
+def maximum_pai_height(df: pd.DataFrame):
+    df['pai_max_height'] = df.apply(lambda row: len(row.pai_z) * 5, axis=1)
+    return df
+
+# TODO: Consider doing this if needed.
+
+
+def first_element_larger_than(l: list[float], t: float):
+    for i in range(len(l)):
+        if l[i] <= t:
+            return i
+    return
+
+
+def transform_pai_z_2(df: pd.DataFrame):
+    df = transform_pai_z_array_to_np(df)
+    df = calculate_pai_z_percentage(df)
+    df["pai_z"] = df.pai_z_np
+    df = df.drop(columns=["pai_z_np"])
+    df = maximum_pai_height(df)
+    df = pad_array(df, "pai_z")
+    df = pad_array(df, "pai_z_percent")
     return df
