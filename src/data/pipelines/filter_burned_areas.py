@@ -121,11 +121,12 @@ def save_unburned_output(df: pd.DataFrame, file_name: str, prefix: str = ""):
     # 2. Keeping all the fire columns, as that's relevant for severity analysis
 
     # Drop all severity columns and fire columns.
-    df = df.drop(columns=['dNBR_offst', 'dNBR_stdDv', 'Low_T', 'Mod_T', 'High_T',
-                          'dnbr_mean', 'dnbr_std', 'dnbr_median', 'dnbr_min',
+    df = df.drop(columns=['dNBR_offst', 'dNBR_stdDv', 'Low_T', 'Mod_T',
+                          'High_T', 'dnbr_mean', 'dnbr_std', 'dnbr_median',
                           'Low_T_adj', 'Mod_T_adj', 'High_T_adj', "fire_id",
                           "fire_size_acres", "fire_name", "fire_ig_date",
-                          "days_since_fire", "pre_fire_ndvi", 'dnbr_max'])
+                          "days_since_fire", "pre_fire_ndvi", 'dnbr_max',
+                          'dnbr_min'])
 
     save_pickle(f"{PIPELINES_PATH}/{prefix}{file_name}", df)
 
