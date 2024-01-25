@@ -14,12 +14,24 @@ pd.options.mode.chained_assignment = None  # default='warn'
 
 
 class RasterSampler:
-    def __init__(self, raster_file_path: str, bands: list[str]):
+    def __init__(
+            self,
+            raster_file_path: str,
+            bands: list[str] = None,
+            bands_map: dict = None):
         self.raster = riox.open_rasterio(raster_file_path)
-        self.bands = bands
+        # Need to provide at least one - bands or bands_map.
+        if bands is None and bands_map is None:
+            raise Exception("bands or bands_map argument must be provided.")
+
+        if bands_map is not None:
+            self.bands_map = bands_map
+            return
+
+        self.bands_map = dict(zip(range(len(bands)), bands))
 
     def sample_2x2(self, df: pd.DataFrame, x_coord: str, y_coord: str,
-                   debug: bool = False):
+                   expanded: bool = False):
         xs = get_idxs_two_nearest(self.raster.x.data, df[x_coord].values)
         ys = get_idxs_two_nearest(self.raster.y.data, df[y_coord].values)
         valid = np.logical_and.reduce(
@@ -36,24 +48,25 @@ class RasterSampler:
 
         # Calculate stats for each band. Attach to df.
         all_bands = []
-        for band_idx in range(len(self.bands)):
-            band_name = self.bands[band_idx]
+        for band_idx, band_name in self.bands_map.items():
             band_values = np.vstack(
                 [self.raster.data[band_idx, ys[:, j], xs[:, i]]
                  for i in [0, 1] for j in [0, 1]]
             ).T
 
-            if debug:
-                # Could be helpful to get the values from all 4 cells.
-                df[f'{band_name}_2x2'] = list(band_values)
+            data = {
+                f'{band_name}_mean': np.mean(band_values, axis=1),
+                f'{band_name}_std': np.std(band_values, axis=1),
+                f'{band_name}_median': np.median(band_values, axis=1)
+            }
 
-            new_df = pd.DataFrame(
-                index=df.index,
-                data={
-                    f'{band_name}_mean': np.mean(band_values, axis=1),
-                    f'{band_name}_std': np.std(band_values, axis=1),
-                    f'{band_name}_median': np.median(band_values, axis=1)
-                })
+            if expanded:
+                # Add additional columns
+                data[f'{band_name}_2x2'] = list(band_values)
+                data[f'{band_name}_min'] = np.min(band_values, axis=1)
+                data[f'{band_name}_max'] = np.max(band_values, axis=1)
+
+            new_df = pd.DataFrame(index=df.index, data=data)
             all_bands.append(new_df)
 
         return pd.concat([df] + all_bands, axis=1)
@@ -75,8 +88,7 @@ class RasterSampler:
         df = df.loc[valid]
 
         # Calculate stats for each band. Attach to df.
-        for band_idx in range(len(self.bands)):
-            band_name = self.bands[band_idx]
+        for band_idx, band_name in self.bands_map.items():
             band_values = np.vstack(
                 [self.raster.data[band_idx, ys[:, j], xs[:, i]]
                  for i in [0, 1, 2] for j in [0, 1, 2]]
@@ -95,8 +107,7 @@ class RasterSampler:
         ys = get_idx(self.raster.y.data, df[y_coord].values)
 
         # Calculate stats for each band. Attach to df.
-        for band_idx in range(len(self.bands)):
-            band_name = self.bands[band_idx]
+        for band_idx, band_name in self.bands_map.items():
             band_values = self.raster.data[band_idx, ys, xs]
             df[f'{band_name}'] = list(band_values)
         return df

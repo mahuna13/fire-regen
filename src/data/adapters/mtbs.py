@@ -112,10 +112,16 @@ def get_mtbs_perimeters_for_sierras():
     mtbs_fires = mtbs_db.perimeters[
         mtbs_db.perimeters.Incid_Type == "Wildfire"][columns]
 
-    mtbs_fires['Ig_Year'] = mtbs_fires.Ig_Date.dt.year
     mtbs_fires['Low_T_adj'] = mtbs_fires.Low_T - mtbs_fires.dNBR_offst
     mtbs_fires['Mod_T_adj'] = mtbs_fires.Mod_T - mtbs_fires.dNBR_offst
     mtbs_fires['High_T_adj'] = mtbs_fires.High_T - mtbs_fires.dNBR_offst
+
+    mtbs_fires.rename(columns={
+        "Event_ID": "fire_id",
+        "BurnBndAc": "fire_size_acres",
+        "Incid_Name": "fire_name",
+        "Ig_Date": "fire_ig_date"
+    }, inplace=True)
 
     return mtbs_fires
 
@@ -167,3 +173,40 @@ def trim_fire_area(
         save_pickle(MTBS_PERIMETERS_TRIMMED(distance), trimmed_gdf)
 
     return trimmed_gdf
+
+
+def get_burn_severity(df: pd.DataFrame):
+    # Calculate severities - this algo is subject to change. The threshold
+    # used are from the rdnbr paper that calibrated these thresholds for the
+    # Sierras.
+    LOW_T = 177
+    HIGH_T = 367
+
+    df.loc[df[df.dnbr_min < LOW_T].index, "min_severity"] = 0
+    df.loc[df[(df.dnbr_min >= LOW_T) & (df.dnbr_min < HIGH_T)].index,
+           "min_severity"] = 1
+    df.loc[df[df.dnbr_min >= HIGH_T].index, "min_severity"] = 2
+
+    df.loc[df[df.dnbr_max < LOW_T].index, "max_severity"] = 0
+    df.loc[df[(df.dnbr_max >= LOW_T) & (df.dnbr_min < HIGH_T)].index,
+           "max_severity"] = 1
+    df.loc[df[df.dnbr_max >= HIGH_T].index, "max_severity"] = 2
+    df["coeff_of_var"] = round((df.dnbr_std / df.dnbr_mean) * 100, 1)
+
+    # Keep those shots where min and max severity belong to the same category
+    # or coeff of variation is smaller than 30%.
+    # TODO: Write a better explanation. This essentially just serves to
+    # deal with GEDI geoloc error.
+    df = df[(df.min_severity == df.max_severity) | (df.coeff_of_var < 30)]
+
+    df.loc[df[df.dnbr_mean < LOW_T].index, "severity"] = 0
+    df.loc[df[(df.dnbr_mean >= LOW_T) & (df.dnbr_mean < HIGH_T)].index,
+           "severity"] = 1
+    df.loc[df[df.dnbr_mean >= HIGH_T].index, "severity"] = 2
+
+    df.drop(columns=['dnbr_min', 'dnbr_max', 'dnbr_std', 'dnbr_median',
+                     'min_severity', 'max_severity', 'coeff_of_var',
+                     'dNBR_offst', 'dNBR_stdDv', 'Low_T', 'Mod_T', 'High_T',
+                     'Low_T_adj', 'Mod_T_adj', 'High_T_adj'], inplace=True)
+
+    return df

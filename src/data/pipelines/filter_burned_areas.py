@@ -1,22 +1,21 @@
-from src.constants import GEDI_INTERMEDIATE_PATH
+from src.constants import INTERMEDIATE_RESULTS
 from src.utils.logging_util import get_logger
 from fastai.tabular.all import load_pickle, save_pickle
-from src.data.pipelines import run_overlays as overlays
+from src.data.processing import overlay
 import pandas as pd
-import os
-import sys
 
+pd.options.mode.chained_assignment = None
 logger = get_logger(__file__)
 
-OVERLAYS_PATH = f"{GEDI_INTERMEDIATE_PATH}/overlays"
+PIPELINES_PATH = f"{INTERMEDIATE_RESULTS}/pipelines"
 
 
 def get_overlay(file_name: str):
-    return load_pickle(f"{OVERLAYS_PATH}/{file_name}")
+    return load_pickle(f"{overlay.OVERLAYS_PATH}/{file_name}")
 
 
 def get_output_path(file_name: str):
-    return f"{OVERLAYS_PATH}/{file_name}"
+    return f"{PIPELINES_PATH}/{file_name}"
 
 
 def exclude_fire_boundaries(df: pd.DataFrame):
@@ -63,7 +62,7 @@ def filter_burned_based_on_land_cover(df: pd.DataFrame):
     all_years = []
     for year in range(start, end):
         lc_year = max(1985, year - 1)
-        filtered = df[df.Ig_Year == year]
+        filtered = df[df.fire_ig_date.dt.year == year]
         lc_df = get_overlay(f"land_cover_overlay_{lc_year}.pkl")
 
         filtered = filtered.join(
@@ -77,24 +76,64 @@ def filter_burned_based_on_land_cover(df: pd.DataFrame):
 
 
 def filter_unburned_based_on_land_cover(df: pd.DataFrame):
-    recent_lc = load_pickle(overlays.RECENT_LAND_COVER).drop(
+    recent_lc = load_pickle(overlay.RECENT_LAND_COVER).drop(
         columns=["absolute_time"])
 
     joined_lc = df.join(recent_lc, how="left")
     filtered = joined_lc[(joined_lc.land_cover_std == 0)
                          & (joined_lc.land_cover_median == 1)]
 
-    return recent_lc.loc[filtered.index]
+    return df.loc[filtered.index]
 
 
-if __name__ == '__main__':
-    burned_path = get_output_path("burned_once.pkl")
-    unburned_path = get_output_path("unburned.pkl")
-    if os.path.exists(burned_path) and os.path.exists(unburned_path):
-        sys.exit()
+def filter_burn_severity(df: pd.DataFrame):
+    INVALID = -5000
 
+    # Filter invalid dnbr values.
+    df = df[df.dnbr_min > INVALID]
+    return df
+
+
+def save_burned_output(df: pd.DataFrame, file_name: str, prefix: str = ""):
+    # Save output in two formats:
+    # 1. Keeping only the fire info.
+    # 2. Keeping all the fire columns, as that's relevant for severity analysis
+
+    # Drop all severity columns and save only fire info.
+    df_no_severity = df.drop(columns=['dNBR_offst', 'dNBR_stdDv', 'Low_T',
+                                      'Mod_T', 'High_T', 'dnbr_mean',
+                                      'dnbr_std', 'dnbr_median', 'dnbr_min',
+                                      'dnbr_max', 'Low_T_adj', 'Mod_T_adj',
+                                      'High_T_adj'])
+
+    save_pickle(f"{PIPELINES_PATH}/{prefix}{file_name}", df_no_severity)
+
+    logger.info(f"Number of GEDI shots before severity filtering: {len(df)}")
+    df_severity = filter_burn_severity(df)
+    logger.info(f"Number of GEDI shots afer severity filtering: \
+                {len(df_severity)}")
+    save_pickle(f"{PIPELINES_PATH}/{prefix}severity_{file_name}", df_severity)
+
+
+def save_unburned_output(df: pd.DataFrame, file_name: str, prefix: str = ""):
+    # Save output in two formats:
+    # 1. Keeping only the fire info.
+    # 2. Keeping all the fire columns, as that's relevant for severity analysis
+
+    # Drop all severity columns and fire columns.
+    df = df.drop(columns=['dNBR_offst', 'dNBR_stdDv', 'Low_T', 'Mod_T',
+                          'High_T', 'dnbr_mean', 'dnbr_std', 'dnbr_median',
+                          'Low_T_adj', 'Mod_T_adj', 'High_T_adj', "fire_id",
+                          "fire_size_acres", "fire_name", "fire_ig_date",
+                          "days_since_fire", "pre_fire_ndvi", 'dnbr_max',
+                          'dnbr_min'])
+
+    save_pickle(f"{PIPELINES_PATH}/{prefix}{file_name}", df)
+
+
+def run(gedi_path: str, prefix: str):
     # Load all GEDI shots overlayed with MTBS data.
-    shots = get_overlay("mtbs_severity_overlay.pkl")
+    shots = get_overlay(gedi_path)
     logger.info(f"Total number of GEDI shots to process: {len(shots)}")
 
     # Get rid of all the shots that fell around the boundary of any fire.
@@ -103,19 +142,26 @@ if __name__ == '__main__':
         fire boundaries: {len(shots)}")
 
     burned_once, burned_multiple, unburned = filter_burn_areas(shots)
+    save_burned_output(burned_once, "burned_once.pkl", prefix)
+    save_burned_output(burned_multiple, "burned_multiple.pkl", prefix)
+    save_unburned_output(unburned, "unburned.pkl", prefix)
 
     burned_once_lc = filter_burned_based_on_land_cover(burned_once)
     logger.info(
         f"Number of burned shots after filtering for land cover: \
-            {len(burned_once)}")
+            {len(burned_once_lc)}")
+    save_burned_output(burned_once_lc, "burned_once_lc.pkl", prefix)
 
     unburned_lc = filter_unburned_based_on_land_cover(unburned)
     logger.info(
         f"Number of unburned shots after filtering for land cover: \
             {len(unburned_lc)}")
+    save_unburned_output(unburned_lc, "unburned_lc.pkl", prefix)
 
-    save_pickle(f"{OVERLAYS_PATH}/burned_once_lc.pkl", burned_once_lc)
-    save_pickle(f"{OVERLAYS_PATH}/burned_once.pkl", burned_once)
-    save_pickle(f"{OVERLAYS_PATH}/burned_multiple.pkl", burned_multiple)
-    save_pickle(f"{OVERLAYS_PATH}/unburned.pkl", unburned)
-    save_pickle(f"{OVERLAYS_PATH}/unburned_lc.pkl", unburned_lc)
+
+if __name__ == '__main__':
+    # gedi_path = "seki_mtbs_severity_overlay.pkl"
+    gedi_path = "mtbs_severity_overlay_with_ndvi.pkl"
+    # prefix = "seki_"
+    # run(gedi_path, prefix="seki_")
+    run(gedi_path, prefix="")
