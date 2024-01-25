@@ -15,10 +15,6 @@ from src.utils.logging_util import get_logger
 
 logger = get_logger(__file__)
 
-# TODO: put file names for each overlay into constants accessible elsewhere.
-DYNAMIC_WORLD = f"{overlay.OVERLAYS_PATH}/dynamic_world_overlay.pkl"
-RECENT_LAND_COVER = f"{overlay.OVERLAYS_PATH}/recent_land_cover.pkl"
-
 
 def LANDCOVER(year):
     return f"{overlay.OVERLAYS_PATH}/land_cover_overlay_{year}.pkl"
@@ -64,7 +60,7 @@ def overlay_recent_land_cover():
     # land cover.
 
     # Load shots already combined with dynamic world.
-    gedi_shots = load_pickle(DYNAMIC_WORLD)
+    gedi_shots = load_pickle(overlay.DYNAMIC_WORLD)
 
     gedi_df_combined_years = []
     for year in range(2019, 2024):
@@ -78,8 +74,8 @@ def overlay_recent_land_cover():
 
         gedi_df_combined_years.append(joined_lc)
 
-    overlay = pd.concat(gedi_df_combined_years)
-    save_pickle(RECENT_LAND_COVER, overlay)
+    result = pd.concat(gedi_df_combined_years)
+    save_pickle(overlay.RECENT_LAND_COVER, result)
 
 
 def overlay_land_cover(seki: bool):

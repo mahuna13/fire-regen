@@ -3,13 +3,9 @@ from fastai.tabular.all import load_pickle, save_pickle
 from src.constants import INTERMEDIATE_RESULTS
 from src.data.pipelines.extract_gedi_data import SIERRAS_GEDI_ALL_COLUMNS
 from src.data.utils import gedi_utils
+from src.data.processing import overlay
 
-OVERLAYS_PATH = f"{INTERMEDIATE_RESULTS}/overlays"
 PIPELINES_PATH = f"{INTERMEDIATE_RESULTS}/pipelines"
-
-
-def get_overlays_path(file_name: str):
-    return f"{OVERLAYS_PATH}/{file_name}"
 
 
 def get_pipelines_path(file_name: str):
@@ -45,6 +41,34 @@ Steps:
 '''
 
 
+def filter_other_disturbances(df: pd.DataFrame):
+    DA_CLASSES = [2, 3, 5]
+    # Separate DF into burned and unburned
+    burned = df[df.YSF > 0]
+    unburned = df[df.YSF < 0]
+
+    # Join with disturbances.
+    da = load_pickle(overlay.DISTURBANCE_AGENTS)
+    unburned_da = unburned.join(da, how="left")
+    burned_da = burned.join(da, how="left")
+
+    match_unburned = unburned_da[
+        (unburned_da.da_year < unburned_da.absolute_time.dt.year) &
+        (unburned_da.da_min.isin(DA_CLASSES))]
+    match_burned = burned_da[
+        (burned_da.da_year - 1 > burned_da.fire_ig_date.dt.year) &
+        (burned_da.da_year < burned_da.absolute_time.dt.year) &
+        (burned_da.da_min.isin(DA_CLASSES))]
+
+    match_unburned_index = match_unburned.index.drop_duplicates()
+    match_burned_index = match_burned.index.drop_duplicates()
+
+    unburned_filtered = unburned[~unburned.index.isin(match_unburned_index)]
+    burned_filtered = burned[~burned.index.isin(match_burned_index)]
+
+    return pd.concat([unburned_filtered, burned_filtered])
+
+
 def run(severity_analysis):
     if severity_analysis:
         burned = load_pickle(get_pipelines_path(
@@ -63,14 +87,14 @@ def run(severity_analysis):
 
     # Step 4.
     # - load all of GEDI data.
-    gedi = gedi_utils.get_gedi_shots(SIERRAS_GEDI_ALL_COLUMNS)
+    gedi = gedi_utils.get_gedi_shots(SIERRAS_GEDI_ALL_COLUMNS, overlay.INDEX)
     GEDI_COLUMNS = ["agbd", "cover", "fhd_normal", "pai", "pai_z", "rh_25",
                     "rh_50", "rh_70", "rh_98", "elevation_difference_tdx"]
     # cols_to_use = gedi.columns.difference(df.columns)
     df = df.join(gedi[GEDI_COLUMNS], how="left")
 
     # Finally, join with terrain.
-    terrain = load_pickle(get_overlays_path("terrain_overlay.pkl"))
+    terrain = load_pickle(overlay.get_overlays_path("terrain_overlay.pkl"))
     cols_to_use = terrain.columns.difference(df.columns)
     df = df.join(terrain[cols_to_use], how="left")
 
@@ -79,14 +103,25 @@ def run(severity_analysis):
             ].drop(columns=["elevation_difference_tdx"])
 
     # And NDVI.
-    ndvi = load_pickle(get_overlays_path("ndvi_overlay.pkl"))
+    ndvi = load_pickle(overlay.get_overlays_path("ndvi_overlay.pkl"))
     df = df.join(ndvi, how="left")
+
+    # Get rid of points over 35 years as we only have a few of those, and
+    # points where YSF = 0, since it's unclear whether GEDI shot was taken
+    # before or after fire.
+    df = df[(df.YSF != 0) & (df.YSF < 36)]
+
+    # Filter out other non-fire disturbances.
+    df_da = filter_other_disturbances(df)
 
     if severity_analysis:
         save_pickle(get_pipelines_path(
             "severity_aggregated_info.pkl"), df)
+        save_pickle(get_pipelines_path(
+            "severity_aggregated_info_da.pkl"), df_da)
     else:
         save_pickle(get_pipelines_path("aggregated_info.pkl"), df)
+        save_pickle(get_pipelines_path("aggregated_info_da.pkl"), df_da)
 
     return df
 

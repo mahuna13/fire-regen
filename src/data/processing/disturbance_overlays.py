@@ -44,7 +44,8 @@ def overlay_with_disturbances(df: pd.DataFrame):
             raster.RasterSampler(file_name, RASTER_BANDS),
             gedi_within,
             # Raster resolution is 30m, so use 2x2 matching with GEDI.
-            kernel=2
+            kernel=2,
+            expanded=True
         )
         filtered = filter_disturbances(matched)
         gedi_matched.append(filtered)
@@ -76,7 +77,22 @@ def filter_disturbances(df: pd.DataFrame):
             ignore_index=False
         ).drop(columns=['variable'])
 
-        per_year = pd.concat([col_mean, col_std, col_median], axis=1)
+        col_min = pd.melt(
+            df,
+            value_vars=[f'year_{year}_min'],
+            value_name="da_min",
+            ignore_index=False
+        ).drop(columns=['variable'])
+
+        col_max = pd.melt(
+            df,
+            value_vars=[f'year_{year}_max'],
+            value_name="da_max",
+            ignore_index=False
+        ).drop(columns=['variable'])
+
+        per_year = pd.concat([col_mean, col_std, col_median,
+                              col_min, col_max], axis=1)
 
         # Get rid of the ones with std == 0 and median == fill value
         filtered = per_year[
