@@ -2,18 +2,19 @@ import rasterio
 from rasterio.merge import merge
 import os
 from src.utils.logging_util import get_logger
+from src.constants import DATA_PATH
 
 logger = get_logger(__file__)
 LANDSAT_BANDS = ['nbr', 'ndvi', 'SR_B1', 'SR_B2',
                  'SR_B3', 'SR_B4', 'SR_B5', 'SR_B6', 'SR_B7']
-TERRAIN_OUTPUT_DIR = "/maps/fire-regen/data/rasters/TERRAIN/"
+TERRAIN_OUTPUT_DIR = f"{DATA_PATH}/rasters/TERRAIN/"
 TERRAIN_PREFIX = "terrain_"
 TERRAIN_BANDS = ['elevation', 'slope', 'aspect', 'soil']
 
 
-def INPUT_DIR(year): return f"/maps/fire-regen/data/rasters/LANDSAT/{year}/"
+def INPUT_DIR(year): return f"{DATA_PATH}/rasters/LANDSAT/{year}/"
 def OUTPUT_DIR(
-    year): return f"/maps/fire-regen/data/rasters/LANDSAT/{year}/out/"
+    year): return f"{DATA_PATH}/rasters/LANDSAT/{year}/out/"
 
 
 def PREFIX(year): return f"landsat_{year}_"
