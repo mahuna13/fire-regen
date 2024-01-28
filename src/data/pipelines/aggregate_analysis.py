@@ -1,11 +1,13 @@
 import pandas as pd
+import geopandas as gpd
 from fastai.tabular.all import load_pickle, save_pickle
-from src.constants import INTERMEDIATE_RESULTS
+from src.constants import INTERMEDIATE_RESULTS, SIERRAS
 from src.data.pipelines.extract_gedi_data import SIERRAS_GEDI_ALL_COLUMNS
 from src.data.utils import gedi_utils
 from src.data.processing import overlay
 
 PIPELINES_PATH = f"{INTERMEDIATE_RESULTS}/pipelines"
+SIERRAS_ROI = gpd.read_file(SIERRAS)
 
 
 def get_pipelines_path(file_name: str):
@@ -83,6 +85,11 @@ def run(severity_analysis):
 
     # Step 3.
     df = pd.concat([burned, unburned])
+
+    # Keep only shots that fall within the Sierra conservancy teritory.
+    df = df.sjoin(SIERRAS_ROI, how="inner", predicate="within").drop(
+        columns="index_right")
+
     df = gedi_utils.add_YSF_categories(df, 5)
 
     # Step 4.
