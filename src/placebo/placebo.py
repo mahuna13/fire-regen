@@ -4,7 +4,6 @@ import geopandas as gpd
 import numpy as np
 import pandas as pd
 from src.constants import PROJECTED_CALIFORNIA, WGS84
-from src.data.adapters import mtbs
 from src.utils.logging_util import get_logger
 
 logger = get_logger(__file__)
@@ -26,10 +25,10 @@ Sampling Requirements:
     1.  Diminish the effects of spatial autocorrelation: GEDI shots will
         exhibit some level of spatial autocorrelation. As such, simple random
         sampling of untreated shots may be inadequate - as placebo test set and
-        training test set may contain samples that are extremely similar to 
+        training test set may contain samples that are extremely similar to
         each other.
     2.  Placebo tests should mimic real-world scenario and our ultimate
-        evaluation criteria. We want to understand which scenario works on 
+        evaluation criteria. We want to understand which scenario works on
         wildfires. Wildfires always burn continous areas, and do not sample
         randomly. As such, we want our placebo tests to mimic the actual
         treatment patterns.
