@@ -78,7 +78,7 @@ DEFAULT_LOG_LEVEL = logging.DEBUG  # verbose logging per default
 # Coordinate reference systems (crs)
 WGS84 = "EPSG:4326"  # WGS84 standard crs (latitude, longitude)
 WEBMERCATOR = "EPSG:3857"  # CRS for web maps
-SIRGAS_BRAZIL = "EPSG:5880"  # Polyconic projected CRS for Brazil
+PROJECTED_CALIFORNIA = "EPSG:3310"
 
 WGS84_UTM18S = "EPSG:32718"  # https://epsg.io/32718
 WGS84_UTM19S = "EPSG:32719"  # https://epsg.io/32719
