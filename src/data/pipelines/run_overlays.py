@@ -131,6 +131,10 @@ def run_all_overlays(seki=False):
     run_overlay(raster_overlays.overlay_landsat,
                 "landsat_overlay.pkl", seki=seki)
 
+    # NDVI Overlay
+    run_overlay(raster_overlays.overlay_ndvi,
+                "ndvi_timeseries_overlay.pkl", seki=seki)
+
     # Dynamic World Overlay
     run_overlay(raster_overlays.overlay_dynamic_world,
                 "dynamic_world_overlay.pkl", seki=seki)
