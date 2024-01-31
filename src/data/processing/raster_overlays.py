@@ -64,6 +64,21 @@ def overlay_landsat(df: pd.DataFrame):
     return result
 
 
+def overlay_ndvi(df: pd.DataFrame):
+    df = overlay.validate_input(df)
+    for year in range(1984, 2023):
+        logger.debug(f'Match NDVI for year {year}')
+
+        COL_NAME = f"ndvi_{year}"
+        raster = gedi_raster_matching.get_ndvi_raster_sampler(year)
+        matched = gedi_raster_matching.sample_raster(raster, df, 2) \
+            .rename(columns={"ndvi_mean": COL_NAME})
+
+        df[COL_NAME] = matched[COL_NAME]
+
+    return df
+
+
 def overlay_dynamic_world(df: pd.DataFrame):
     df = overlay.validate_input(df)
 
