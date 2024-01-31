@@ -8,6 +8,7 @@ import math
 from sklearn.metrics import *
 import numpy as np
 from typing import Callable
+from src.utils.eval import rmse, r_squared
 
 
 def evaluate_control(
@@ -78,15 +79,3 @@ def evaluate_control_on_single_fake_fire(
     vals_controls_median = vals_with_controls.agbd_control_median.values
 
     return vals, vals_controls_mean, vals_controls_median
-
-
-def rmse(samples, controls):
-    if samples is None or controls is None:
-        return None
-    return math.sqrt(mean_squared_error(samples, controls))
-
-
-def r_squared(samples, controls):
-    if samples is None or controls is None:
-        return None
-    return r2_score(samples, controls)
