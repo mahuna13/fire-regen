@@ -64,6 +64,21 @@ def overlay_landsat(df: pd.DataFrame):
     return result
 
 
+def overlay_landsat_for_year(df: pd.DataFrame, year: int):
+    df = overlay.validate_input(df)
+    LANDSAT_COLUMNS = gedi_raster_matching.get_landsat_bands(year)
+
+    logger.debug(f'Match Landsat for year {year}')
+    raster = gedi_raster_matching.get_landsat_raster_sampler(year)
+    matched = gedi_raster_matching.sample_raster(raster,
+                                                 df,
+                                                 kernel=2)
+    for column in LANDSAT_COLUMNS:
+        df[f"{column}_{year}"] = matched[f"{column}_mean"]
+
+    return df
+
+
 def overlay_ndvi(df: pd.DataFrame):
     df = overlay.validate_input(df)
     for year in range(1984, 2023):

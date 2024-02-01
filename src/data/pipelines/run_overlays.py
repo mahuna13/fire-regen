@@ -90,6 +90,13 @@ def overlay_land_cover(seki: bool):
                     f"land_cover_overlay_{year}.pkl", seki=seki)
 
 
+def overlay_all_landsat_years(seki: bool):
+    for year in range(1984, 2023):
+        run_overlay(
+            lambda x: raster_overlays.overlay_landsat_for_year(x, year),
+            f"landsat_overlay_{year}.pkl", seki=seki)
+
+
 def run_all_overlays(seki=False):
     # Burn Datasets Overlays
     run_overlay(bb.overlay_with_boundary_buffers, "burn_boundary_overlay.pkl",
@@ -145,6 +152,8 @@ def run_all_overlays(seki=False):
     # Disturbances Overlay
     run_overlay(da.overlay_with_disturbances,
                 "disturbances_overlay.pkl", seki=seki)
+
+    overlay_all_landsat_years(seki)
 
 
 if __name__ == '__main__':
