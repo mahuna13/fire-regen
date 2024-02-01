@@ -72,6 +72,23 @@ def get_landsat_8(polygon, start_date):
     return pre_sample_ls
 
 
+def get_landsat_8_monthly(polygon, start_date):
+    ee_geom = ee_utils.gdf_to_ee_polygon(polygon)
+    ee_start_date = ee.Date(start_date)
+    ee_end_date = ee_start_date.advance(1, "month")
+
+    ls8SR = ee.ImageCollection('LANDSAT/LC08/C02/T1_L2')
+    ls8 = ls8SR.map(mask_cloud_pixels_landsat_8).map(add_NDVI)
+
+    pre_sample_ls = ls8.filterBounds(ee_geom) \
+        .filterDate(ee_start_date, ee_end_date) \
+        .mean() \
+        .select(['SR_B.', 'NDVI']) \
+        .cast({'NDVI': 'double'})
+
+    return pre_sample_ls
+
+
 def get_landsat_5(polygon, start_date):
     ee_geom = ee_utils.gdf_to_ee_polygon(polygon)
     ee_start_date = ee.Date(start_date)
