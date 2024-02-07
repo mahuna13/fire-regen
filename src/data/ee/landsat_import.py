@@ -107,6 +107,23 @@ def get_landsat_5(polygon, start_date):
     return pre_sample_ls
 
 
+def get_landsat_5_monthly(polygon, start_date):
+    ee_geom = ee_utils.gdf_to_ee_polygon(polygon)
+    ee_start_date = ee.Date(start_date)
+    ee_end_date = ee_start_date.advance(1, 'month')
+
+    ls5SR = ee.ImageCollection('LANDSAT/LT05/C02/T1_L2')
+    ls8 = ls5SR.map(mask_cloud_pixels_landsat_5).map(add_NDVI_L5)
+
+    pre_sample_ls = ls8.filterBounds(ee_geom) \
+        .filterDate(ee_start_date, ee_end_date) \
+        .mean() \
+        .select(['SR_B.', 'NDVI']) \
+        .cast({'NDVI': 'double'})
+
+    return pre_sample_ls
+
+
 def get_landsat_7(polygon, start_date):
     ee_geom = ee_utils.gdf_to_ee_polygon(polygon)
     ee_start_date = ee.Date(start_date)
@@ -118,6 +135,23 @@ def get_landsat_7(polygon, start_date):
     pre_sample_ls = ls8.filterBounds(ee_geom) \
         .filterDate(ee_start_date, ee_end_date) \
         .filter(ee.Filter.dayOfYear(START_DAY, END_DAY)) \
+        .mean() \
+        .select(['SR_B.', 'NDVI']) \
+        .cast({'NDVI': 'double'})
+
+    return pre_sample_ls
+
+
+def get_landsat_7_monthly(polygon, start_date):
+    ee_geom = ee_utils.gdf_to_ee_polygon(polygon)
+    ee_start_date = ee.Date(start_date)
+    ee_end_date = ee_start_date.advance(1, 'month')
+
+    ls5SR = ee.ImageCollection('LANDSAT/LE07/C02/T1_L2')
+    ls8 = ls5SR.map(mask_cloud_pixels_landsat_5).map(add_NDVI_L5)
+
+    pre_sample_ls = ls8.filterBounds(ee_geom) \
+        .filterDate(ee_start_date, ee_end_date) \
         .mean() \
         .select(['SR_B.', 'NDVI']) \
         .cast({'NDVI': 'double'})
@@ -138,7 +172,7 @@ def get_landsat_advanced(polygon, start_date):
     landsat_ic = ls8.filterBounds(ee_geom) \
         .filterDate(ee_start_date, ee_end_date)
 
-    landsat_ic = landsat_ic.map(applyScaleFactors).select('SR_B.')
+    landsat_ic = landsat_ic.select('SR_B.')
     landsat_ic = landsat_ic.map(add_NDVI).map(add_NDWI).map(add_NBR) \
         .map(add_NDMI).map(add_SWIRS).map(add_SVVI).map(add_TCT)
 
@@ -158,6 +192,9 @@ def get_landsat_advanced(polygon, start_date):
              'brightness',
              'greenness',
              'wetness']
+
+    print("new")
+    return landsat_ic
 
     landsat_ic.select(bands)
     return landsat_ic.select(bands).mean()
@@ -253,8 +290,3 @@ def add_TCT(image):
     greenness = greenness.reduce(ee.call("Reducer.sum")).rename('greenness')
     wetness = wetness.reduce(ee.call("Reducer.sum")).rename('wetness')
     return image.addBands(brightness).addBands(greenness).addBands(wetness)
-
-
-def applyScaleFactors(image):
-    opticalBands = image.select('SR_B.').multiply(0.0000275).add(-0.2)
-    return image.addBands(opticalBands, None, True)
