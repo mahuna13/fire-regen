@@ -126,6 +126,14 @@ def run(severity_analysis):
             "severity_aggregated_info.pkl"), df)
         save_pickle(get_pipelines_path(
             "severity_aggregated_info_da.pkl"), df_da)
+        '''
+        TODO: decide whether to keep these - but leftover hold in case we want
+        to deal with all unburned data, and not the land-cover filtered ones.
+        save_pickle(get_pipelines_path(
+            "severity_aggregated_info_no_lc_for_unburned.pkl"), df)
+        save_pickle(get_pipelines_path(
+            "severity_aggregated_info_da_no_lc_for_unburned.pkl"), df_da)
+        '''
     else:
         save_pickle(get_pipelines_path("aggregated_info.pkl"), df)
         save_pickle(get_pipelines_path("aggregated_info_da.pkl"), df_da)
