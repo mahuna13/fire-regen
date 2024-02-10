@@ -8,6 +8,7 @@ OVERLAYS_PATH = f"{INTERMEDIATE_RESULTS}/overlays"
 DYNAMIC_WORLD = f"{OVERLAYS_PATH}/dynamic_world_overlay.pkl"
 RECENT_LAND_COVER = f"{OVERLAYS_PATH}/recent_land_cover.pkl"
 DISTURBANCE_AGENTS = f"{OVERLAYS_PATH}/disturbances_overlay.pkl"
+TCC = f"{OVERLAYS_PATH}/tree_canopy_cover_overlay.pkl"
 
 
 def get_overlays_path(file_name: str):

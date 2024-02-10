@@ -27,6 +27,10 @@ def LCSM_RASTER(year):
     return f"{DATA_PATH}/rasters/lcsm/lcms_{year}.tif"
 
 
+def TREE_COVER_RASTER(year):
+    return f"{DATA_PATH}/rasters/GFCC/GFCC_{year}.tif"
+
+
 BURN_RASTER_BANDS = ['burn_severity', 'burn_year', 'burn_counts']
 LAND_COVER_BANDS = ['land_cover']
 TERRAIN_BANDS = ['aspect', 'elevation', 'slope', 'soil']
@@ -34,6 +38,7 @@ LANDSAT5_BANDS = ['SR_B1', 'SR_B2', 'SR_B3', 'SR_B4', 'SR_B5', 'SR_B7', 'NDVI']
 LANDSAT8_BANDS = ["SR_B1", "SR_B2", "SR_B3", "SR_B4", "SR_B5", "SR_B6",
                   "SR_B7", "NDVI"]
 DW_BANDS = ["dw_land_cover"]
+GFCC_BANDS = ["tree_canopy_cover"]
 
 
 def get_landsat_raster_sampler(year):
@@ -51,6 +56,11 @@ def get_ndvi_raster_sampler(year):
 def get_dw_raster_sampler(year):
     raster_path = DYNAMIC_WORLD_RASTER(year)
     return raster.RasterSampler(raster_path, DW_BANDS)
+
+
+def get_gfcc_raster_sampler(year):
+    raster_path = TREE_COVER_RASTER(year)
+    return raster.RasterSampler(raster_path, GFCC_BANDS)
 
 
 def which_landsat(year):

@@ -7,6 +7,7 @@ from src.data.pipelines.extract_gedi_data import (
 from src.data.processing import all_fires_overlay as fa
 from src.data.processing import burn_boundaries_overlay as bb
 from src.data.processing import disturbance_overlays as da
+from src.data.processing import advanced_landsat_overlay as alo
 from src.data.processing import overlay
 from src.data.processing import pre_fire_ndvi_overlay as pfno
 from src.data.processing import raster_overlays
@@ -36,6 +37,11 @@ def run_overlay(overlay_fn, file_name, override=False, seki=False):
 
     gedi_shots = SEKI_GEDI_ID_COLUMNS if seki else SIERRAS_GEDI_ID_COLUMNS
     result = overlay_fn(load_pickle(gedi_shots))
+
+    if result is None:
+        logger.info("No overlay obtained.")
+        return
+
     save_pickle(output_path, result)
     logger.info("Done! \n")
     return result
@@ -153,10 +159,25 @@ def run_all_overlays(seki=False):
     run_overlay(da.overlay_with_disturbances,
                 "disturbances_overlay.pkl", seki=seki)
 
+    # Adv Landsat
+    for kind in ["mean", "min", "max", "stddev", "qt_25", "qt_50", "qt_75"]:
+        run_overlay(lambda x: alo.overlay_advanced_landsat(x, 2019, kind),
+                    f"advanced_landsat_overlay_{kind}.pkl", seki=seki)
+
+    # Monthly Landsat
+    year = 2003
+    for month in range(1, 13):
+        run_overlay(lambda x: alo.overlay_monthly_landsat(x, year, month),
+                    f"monthly_landsat_overlay_{year}_{month}.pkl", seki=seki)
+
+    # GFCC Overlay - tree canopy cover.
+    run_overlay(raster_overlays.overlay_tree_cover,
+                "tree_canopy_cover_overlay.pkl", seki=seki)
+
     overlay_all_landsat_years(seki)
 
 
 if __name__ == '__main__':
     # TODO: add params to main
-    seki = False
+    seki=False
     run_all_overlays(seki)
