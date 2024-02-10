@@ -5,8 +5,7 @@ import geopandas as gpd
 import pandas as pd
 import rasterio as rio
 from shapely.geometry import box
-from src.constants import WGS84, DATA_PATH
-from src.data.adapters import disturbance_agents as da
+from src.constants import DATA_PATH, WGS84
 from src.data.processing import gedi_raster_matching, overlay
 from src.data.utils import gedi_utils, raster
 from src.utils.logging_util import get_logger
@@ -27,10 +26,6 @@ BANDS = ["SR_B1", "SR_B2", "SR_B3", "SR_B4", "SR_B5", "SR_B6", "SR_B7", "NDVI",
 
 def MONTHLY_LANDSAT_PATH(year):
     return f"{DATA_PATH}/rasters/LANDSAT_MONTHLY/{year}"
-
-
-MONTHLY_BANDS = ["SR_B1", "SR_B2", "SR_B3",
-                 "SR_B4", "SR_B5", "SR_B6", "SR_B7", "NDVI"]
 
 
 def overlay_advanced_landsat(
@@ -80,12 +75,15 @@ def overlay_monthly_landsat(
         month: int):
     df = overlay.validate_input(df)
     gdf = gedi_utils.convert_to_geo_df(df)
-    bands = [f"{band}_{month}" for band in MONTHLY_BANDS]
+    monthly_bands = gedi_raster_matching.get_landsat_bands(year)
+    bands = [f"{band}_{month}" for band in monthly_bands]
     gedi_matched = []
 
     logger.info("Starting raster matching.")
-    raster_files = list(Path(f"{MONTHLY_LANDSAT_PATH(year)}/{month}").iterdir())
-    for file_name in raster_files:
+    all_files = list(Path(f"{MONTHLY_LANDSAT_PATH(year)}").iterdir())
+    monthly_rasters = [filename for filename in all_files
+                       if f"{year}_{month}-" in filename.name]
+    for file_name in monthly_rasters:
         logger.info(f"Processing file name: {file_name} \n \n")
         raster_bounds = box(*rio.open(file_name).bounds)
         bounds_gdf = gpd.GeoDataFrame(
@@ -111,5 +109,9 @@ def overlay_monthly_landsat(
         for column in bands:
             gedi_within[column] = matched[f"{column}_mean"]
         gedi_matched.append(gedi_within)
+
+    if len(gedi_matched) == 0:
+        logger.info(f"No matches found for year: {year} and month: {month}")
+        return None
 
     return pd.concat(gedi_matched)
