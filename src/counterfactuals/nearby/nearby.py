@@ -4,7 +4,7 @@ import geopandas as gpd
 import numpy as np
 from fastai.tabular.all import load_pickle, save_pickle
 from src.counterfactuals.counterfactual import CounterfactualGenerator
-from src.data.processing import k_nn
+from src.counterfactuals.nearby import k_nn
 from src.utils.logging_util import get_logger
 
 logger = get_logger(__file__)
