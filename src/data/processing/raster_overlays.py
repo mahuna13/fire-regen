@@ -113,3 +113,20 @@ def overlay_dynamic_world(df: pd.DataFrame):
 
     result = pd.concat(gedi_df_combined_years)
     return result
+
+
+def overlay_tree_cover(df: pd.DataFrame):
+    df = overlay.validate_input(df)
+
+    for year in [2000, 2005, 2010, 2015]:
+        logger.debug(f'Match with Global Tree Canopy Cover for year {year}')
+        raster = gedi_raster_matching.get_gfcc_raster_sampler(year)
+
+        COL_NAME = f"tcc_{year}"
+        # We match with a 2x2 kernel because GFCC resolution is 30m.
+        matched = gedi_raster_matching.sample_raster(raster, df, 2) \
+            .rename(columns={"tree_canopy_cover_mean": COL_NAME})
+
+        df[COL_NAME] = matched[COL_NAME]
+
+    return df
