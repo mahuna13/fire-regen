@@ -179,5 +179,5 @@ def run_all_overlays(seki=False):
 
 if __name__ == '__main__':
     # TODO: add params to main
-    seki=False
+    seki = False
     run_all_overlays(seki)
