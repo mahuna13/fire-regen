@@ -1,13 +1,11 @@
 import pandas as pd
-import geopandas as gpd
 from fastai.tabular.all import load_pickle, save_pickle
-from src.constants import INTERMEDIATE_RESULTS, SIERRAS
+from src.constants import INTERMEDIATE_RESULTS
 from src.data.pipelines.extract_gedi_data import SIERRAS_GEDI_ALL_COLUMNS
 from src.data.utils import gedi_utils
-from src.data.processing import overlay
+from src.data.processing import overlay, filter
 
 PIPELINES_PATH = f"{INTERMEDIATE_RESULTS}/pipelines"
-SIERRAS_ROI = gpd.read_file(SIERRAS)
 
 
 def get_pipelines_path(file_name: str):
@@ -43,34 +41,6 @@ Steps:
 '''
 
 
-def filter_other_disturbances(df: pd.DataFrame):
-    DA_CLASSES = [2, 3, 5]
-    # Separate DF into burned and unburned
-    burned = df[df.YSF > 0]
-    unburned = df[df.YSF < 0]
-
-    # Join with disturbances.
-    da = load_pickle(overlay.DISTURBANCE_AGENTS)
-    unburned_da = unburned.join(da, how="left")
-    burned_da = burned.join(da, how="left")
-
-    match_unburned = unburned_da[
-        (unburned_da.da_year < unburned_da.absolute_time.dt.year) &
-        (unburned_da.da_min.isin(DA_CLASSES))]
-    match_burned = burned_da[
-        (burned_da.da_year - 1 > burned_da.fire_ig_date.dt.year) &
-        (burned_da.da_year < burned_da.absolute_time.dt.year) &
-        (burned_da.da_min.isin(DA_CLASSES))]
-
-    match_unburned_index = match_unburned.index.drop_duplicates()
-    match_burned_index = match_burned.index.drop_duplicates()
-
-    unburned_filtered = unburned[~unburned.index.isin(match_unburned_index)]
-    burned_filtered = burned[~burned.index.isin(match_burned_index)]
-
-    return pd.concat([unburned_filtered, burned_filtered])
-
-
 def run(severity_analysis):
     if severity_analysis:
         burned = load_pickle(get_pipelines_path(
@@ -85,11 +55,7 @@ def run(severity_analysis):
 
     # Step 3.
     df = pd.concat([burned, unburned])
-
-    # Keep only shots that fall within the Sierra conservancy teritory.
-    df = df.sjoin(SIERRAS_ROI, how="inner", predicate="within").drop(
-        columns="index_right")
-
+    df = filter.exclude_shots_outside_sierra_conservancy(df)
     df = gedi_utils.add_YSF_categories(df, 5)
 
     # Step 4.
@@ -101,13 +67,13 @@ def run(severity_analysis):
     df = df.join(gedi[GEDI_COLUMNS], how="left")
 
     # Finally, join with terrain.
-    terrain = load_pickle(overlay.get_overlays_path("terrain_overlay.pkl"))
+    terrain = load_pickle(overlay.TERRAIN)
     cols_to_use = terrain.columns.difference(df.columns)
     df = df.join(terrain[cols_to_use], how="left")
 
     # Filter on terrain.
-    df = df[(df.slope < 30) & (df.elevation_difference_tdx.abs() < 50)
-            ].drop(columns=["elevation_difference_tdx"])
+    df = filter.exclude_steep_slopes(df).drop(
+        columns=["elevation_difference_tdx"])
 
     # And NDVI.
     ndvi = load_pickle(overlay.get_overlays_path("ndvi_overlay.pkl"))
@@ -119,7 +85,10 @@ def run(severity_analysis):
     df = df[(df.YSF != 0) & (df.YSF < 36)]
 
     # Filter out other non-fire disturbances.
-    df_da = filter_other_disturbances(df)
+    burned = df[df.YSF > 0]
+    unburned = df[df.YSF < 0]
+    burned_da, unburned_da = filter.filter_other_disturbances(burned, unburned)
+    df_da = pd.concat([burned_da, unburned_da])
 
     if severity_analysis:
         save_pickle(get_pipelines_path(
