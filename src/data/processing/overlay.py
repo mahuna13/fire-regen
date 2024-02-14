@@ -26,6 +26,7 @@ MTBS_SEVERITY_WITH_PREFIRE_NDVI = f"{OVERLAYS_PATH}/mtbs_severity_overlay_with_n
 TERRAIN = f"{OVERLAYS_PATH}/terrain_overlay.pkl"
 
 NDVI_TIMESERIES = f"{OVERLAYS_PATH}/ndvi_timeseries_overlay.pkl"
+NDVI_RECENT = f"{OVERLAYS_PATH}/ndvi_overlay.pkl"
 
 
 def LANDCOVER(year):
