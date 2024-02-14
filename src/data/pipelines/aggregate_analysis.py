@@ -76,7 +76,7 @@ def run(severity_analysis):
         columns=["elevation_difference_tdx"])
 
     # And NDVI.
-    ndvi = load_pickle(overlay.get_overlays_path("ndvi_overlay.pkl"))
+    ndvi = load_pickle(overlay.NDVI_RECENT)
     df = df.join(ndvi, how="left")
 
     # Get rid of points over 35 years as we only have a few of those, and
