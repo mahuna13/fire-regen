@@ -17,6 +17,7 @@ from src.utils.logging_util import get_logger
 logger = get_logger(__file__)
 
 
+# Returns shorts within distance from a fire boundary.
 def overlay_with_boundary_buffers(
         df: pd.DataFrame,
         distance: int = 30):

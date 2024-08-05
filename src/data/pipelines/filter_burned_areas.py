@@ -94,5 +94,5 @@ def run(gedi_path: str, prefix: str):
 
 if __name__ == '__main__':
     # gedi_path = "seki_mtbs_severity_overlay.pkl"
-    gedi_path = "mtbs_severity_overlay_with_ndvi.pkl"
+    gedi_path = overlay.MTBS_SEVERITY_WITH_PREFIRE_NDVI
     run(gedi_path, prefix="")
