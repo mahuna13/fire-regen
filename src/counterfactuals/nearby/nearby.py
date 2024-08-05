@@ -9,7 +9,7 @@ from src.utils.logging_util import get_logger
 
 logger = get_logger(__file__)
 
-OUTCOME_VARS = ["pai", "ndvi", "rh_98", "rh_70", "rh_50", "cover"]
+OUTCOME_VARS = ["pai", "ndvi", "rh_98", "rh_70", "rh_50", "cover", "agbd"]
 
 
 class NearbyGenerator(CounterfactualGenerator):
